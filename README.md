@@ -51,26 +51,116 @@ En su primera versión no incluirá pagos en línea, facturación electrónica n
 * Pruebas del sistema.
 * Documentación final.
 
-  Estructura del programa
+ ## Estructura del programa
 
-El sistema se desarrollará con una arquitectura organizada en tres partes principales:
-SISTEMA DE RESERVAS
-        │
-        ├── FRONTEND
-        │     ├── Inicio
-        │     ├── Espacios
-        │     ├── Disponibilidad
-        │     └── Reservas
-        │
-        ├── BACKEND / API
-        │     ├── Clientes
-        │     ├── Espacios
-        │     └── Reservas
-        │
-        └── BASE DE DATOS
-              ├── Cliente
-              ├── Espacio
-              └── Reserva
+El sistema estará organizado en diferentes partes, donde cada una tendrá una función específica dentro del programa.
+
+### 1. Inicio
+Será la pantalla principal del sistema.
+
+Permitirá:
+- Acceder al sistema.
+- Visualizar las opciones principales.
+- Ingresar a los diferentes módulos.
+
+### 2. Gestión de clientes
+Se encargará de almacenar y administrar la información de las personas que realizan una reserva.
+
+Permitirá:
+- Registrar clientes.
+- Consultar clientes.
+- Modificar sus datos.
+- Eliminar clientes.
+
+Datos principales:
+- Nombre y apellido.
+- DNI.
+- Teléfono.
+- Correo electrónico.
+
+### 3. Gestión de espacios
+Administrará los lugares disponibles para realizar reservas.
+
+Los espacios podrán ser:
+- Canchas de fútbol.
+- Canchas de básquet.
+- Canchas de pádel.
+- Salón.
+- Quinchos.
+- Otros espacios para eventos.
+
+Permitirá conocer qué espacios están disponibles y cuáles están ocupados.
+
+### 4. Gestión de reservas
+Será la parte principal del sistema.
+
+Permitirá:
+- Crear una reserva.
+- Consultar reservas.
+- Modificar una reserva.
+- Cancelar una reserva.
+- Seleccionar fecha y horario.
+- Seleccionar el espacio que desea reservar.
+- Asociar la reserva con un cliente.
+
+Antes de registrar una reserva, el sistema verificará que el espacio no esté ocupado en esa fecha y horario.
+
+### 5. Calendario de disponibilidad
+Mostrará las fechas y horarios disponibles.
+
+Permitirá:
+- Visualizar días disponibles.
+- Visualizar días ocupados.
+- Consultar la disponibilidad de cada espacio.
+- Evitar reservas duplicadas.
+
+### 6. Alternativas de reserva
+Si el espacio o el horario seleccionado está ocupado, el sistema podrá mostrar otras opciones disponibles.
+
+Por ejemplo:
+- Otro horario disponible.
+- Otra cancha disponible.
+- Otro espacio para eventos.
+
+### 7. Administración
+Permitirá gestionar la información general del sistema.
+
+Desde esta sección se podrán administrar:
+- Clientes.
+- Espacios.
+- Reservas.
+- Fechas y horarios.
+
+### 8. Base de datos
+La base de datos almacenará permanentemente la información utilizada por el sistema.
+
+Contendrá principalmente:
+- Clientes.
+- Espacios.
+- Reservas.
+- Horarios.
+
+Las tablas estarán relacionadas para poder identificar qué cliente realizó una reserva, qué espacio reservó y en qué fecha y horario.
+
+### 9. API / Backend
+Será la parte encargada de comunicar el programa con la base de datos.
+
+Se utilizarán operaciones como:
+
+- GET: consultar información.
+- POST: registrar nueva información.
+- PUT: modificar información existente.
+- DELETE: eliminar o cancelar información.
+
+Por ejemplo:
+
+GET /reservas → consultar reservas.
+
+POST /reservas → crear una reserva.
+
+PUT /reservas/{id} → modificar una reserva.
+
+DELETE /reservas/{id} → cancelar una reserva.
 
 Módulos del sistema
 Módulo de Clientes: permite registrar y consultar los datos básicos de las personas que realizan reservas.
