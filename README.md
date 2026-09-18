@@ -51,6 +51,37 @@ En su primera versión no incluirá pagos en línea, facturación electrónica n
 * Pruebas del sistema.
 * Documentación final.
 
+  Estructura del programa
+
+El sistema se desarrollará con una arquitectura organizada en tres partes principales:
+SISTEMA DE RESERVAS
+        │
+        ├── FRONTEND
+        │     ├── Inicio
+        │     ├── Espacios
+        │     ├── Disponibilidad
+        │     └── Reservas
+        │
+        ├── BACKEND / API
+        │     ├── Clientes
+        │     ├── Espacios
+        │     └── Reservas
+        │
+        └── BASE DE DATOS
+              ├── Cliente
+              ├── Espacio
+              └── Reserva
+
+Módulos del sistema
+Módulo de Clientes: permite registrar y consultar los datos básicos de las personas que realizan reservas.
+
+Módulo de Espacios: administra los espacios disponibles del complejo, por ejemplo Cancha de Fútbol 1, Cancha de Fútbol 2, Básquet, Pádel, Salón, Quinchos y Cantina.
+
+Módulo de Reservas: es el módulo principal. Permite consultar disponibilidad, registrar una reserva, modificarla y cancelarla. También evita que dos personas reserven el mismo espacio en la misma fecha y horario.
+
+Módulo de Administración: permite al encargado visualizar las reservas realizadas, consultar los espacios ocupados/disponibles y administrar las reservas.
+
+
 ## Cronograma estimado
 
 | Semana | Actividad                                               |
