@@ -117,10 +117,6 @@ El alcance de esta primera versión estará enfocado principalmente en lograr un
 
 ## ⚠️ Limitaciones del Proyecto
 
-El desarrollo del **Sistema de Eventos de un Complejo** estará enfocado en las funciones principales necesarias para la organización y gestión de espacios, clientes y reservas. Por tratarse de una primera versión del sistema, se establecerán ciertas limitaciones con el objetivo de mantener un alcance adecuado y posible de desarrollar.
-
-## ⚠️ Limitaciones del Proyecto
-
 El desarrollo del **Sistema de Eventos de un Complejo** estará centrado principalmente en la organización de clientes, espacios, tarifas y reservas de eventos. Para mantener un alcance posible de desarrollar, la primera versión del sistema contará con determinadas limitaciones.
 
 Las principales limitaciones serán:
