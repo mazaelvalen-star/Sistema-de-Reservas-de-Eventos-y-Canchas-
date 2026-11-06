@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AtepReservas.Api</RootNamespace>
+    <!-- Identifica dónde guarda cada uno su clave de MySQL (dotnet user-secrets). -->
+    <UserSecretsId>atep-reservas-grupo5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Proveedor de EF Core para MySQL. La versión 9 trae EF Core 9, que funciona en .NET 10. -->
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <!-- Swagger: la página para probar la API desde el navegador. -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
+  </ItemGroup>
+
+</Project>

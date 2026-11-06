@@ -1,0 +1,114 @@
+# Pedidos de prueba. Se ejecutan desde Visual Studio, o desde VS Code con la
+# extensión "REST Client" (aparece "Send Request" arriba de cada pedido).
+# Los ID suponen la base recién creada con los dos scripts de database/.
+# Si ya probaste antes, volvé a correr los scripts o ajustá los ID.
+
+@api = http://localhost:5080/api
+
+### 1. Todos los espacios
+GET {{api}}/espacios
+
+### 2. Quinchos libres el sábado 10/04/2027 de 20 a 23
+GET {{api}}/espacios/disponibles?inicio=2027-04-10T20:00:00&fin=2027-04-10T23:00:00&tipo=Quincho
+
+### 3. Reserva de Juan Pérez (no afiliado) en el Quincho 1 → 201, queda Pendiente (RN05)
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 2,
+  "idsEspacios": [2],
+  "fechaHoraInicio": "2027-04-10T20:00:00",
+  "fechaHoraFin": "2027-04-10T23:00:00",
+  "tipoEvento": "Cumpleaños",
+  "cantidadInvitados": 30
+}
+
+### 4. Otra reserva en el mismo quincho que se pisa (22 a 2) → 409 RN01, sugiere el Quincho 2
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [2],
+  "fechaHoraInicio": "2027-04-10T22:00:00",
+  "fechaHoraFin": "2027-04-11T02:00:00"
+}
+
+### 5. Más invitados que la capacidad → 422 RN03
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [3],
+  "fechaHoraInicio": "2027-04-10T20:00:00",
+  "fechaHoraFin": "2027-04-10T23:00:00",
+  "cantidadInvitados": 300
+}
+
+### 6. Seña de la reserva del paso 3 (id 2), pagada en dos partes → pasa a Confirmada (RN05 + RN15)
+POST {{api}}/reservas/2/pagos
+Content-Type: application/json
+
+{
+  "concepto": "Seña",
+  "nroTicket": "0001-00000001",
+  "detalles": [
+    { "idTipoPago": 1, "monto": 50000 },
+    { "idTipoPago": 2, "monto": 25000 }
+  ]
+}
+
+### 7. Un pago mayor al saldo → 422
+POST {{api}}/reservas/2/pagos
+Content-Type: application/json
+
+{
+  "concepto": "Saldo",
+  "detalles": [ { "idTipoPago": 2, "monto": 100000 } ]
+}
+
+### 8. Detalle: espacios, pagos con sus detalles, seña requerida y saldo
+GET {{api}}/reservas/2
+
+### 9. Calendario de abril de 2027
+GET {{api}}/reservas?desde=2027-04-01&hasta=2027-05-01
+
+### 10. Cancelar (RN10): no se borra, pasa a Cancelada y libera el horario
+DELETE {{api}}/reservas/2
+
+### 11. Ahora el pedido del paso 4 sí entra
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [2],
+  "fechaHoraInicio": "2027-04-10T22:00:00",
+  "fechaHoraFin": "2027-04-11T02:00:00"
+}
+
+### 12. Crear un espacio (el CRUD de ejemplo)
+POST {{api}}/espacios
+Content-Type: application/json
+
+{
+  "nombre": "Quincho 3",
+  "tipo": "Quincho",
+  "descripcion": "Quincho chico, sin parrilla",
+  "capacidad": 25
+}
+
+### 13. Nombre repetido (sin tilde también cuenta) → 409
+POST {{api}}/espacios
+Content-Type: application/json
+
+{
+  "nombre": "salon principal",
+  "tipo": "Salon",
+  "capacidad": 100
+}
+
+### 14. La reserva de ejemplo de los datos iniciales: la seña se pagó en efectivo y por transferencia
+GET {{api}}/reservas/1/pagos
