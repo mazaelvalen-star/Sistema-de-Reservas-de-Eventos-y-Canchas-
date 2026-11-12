@@ -112,3 +112,157 @@ Content-Type: application/json
 
 ### 14. La reserva de ejemplo de los datos iniciales: la seña se pagó en efectivo y por transferencia
 GET {{api}}/reservas/1/pagos
+
+
+# ======================================================================
+#  CLIENTES (Sprint 2)
+# ======================================================================
+
+### 15. Buscar clientes por apellido: «gomez», sin tilde, encuentra a Gómez
+GET {{api}}/clientes?buscar=gomez
+
+### 16. Buscar por DNI
+GET {{api}}/clientes?dni=35222333
+
+### 17. Registrar una clienta afiliada con su domicilio → 201 (le toca el id 3)
+POST {{api}}/clientes
+Content-Type: application/json
+
+{
+  "dni": "28999111",
+  "nombre": "Ana",
+  "apellido": "Ruiz",
+  "telefono": "381-555-0003",
+  "email": "ana.ruiz@ejemplo.com",
+  "esAfiliado": true,
+  "nroAfiliado": "AF-20001",
+  "domicilio": {
+    "calle": "Las Heras",
+    "numero": "450",
+    "barrio": "Centro",
+    "localidad": "Tafí Viejo",
+    "codigoPostal": "4103"
+  }
+}
+
+### 18. El mismo DNI otra vez → 409 DUPLICADO
+POST {{api}}/clientes
+Content-Type: application/json
+
+{
+  "dni": "28999111",
+  "nombre": "Ana",
+  "apellido": "Ruiz",
+  "telefono": "381-555-0003",
+  "domicilio": { "calle": "Las Heras", "numero": "450", "localidad": "Tafí Viejo" }
+}
+
+### 19. Afiliado sin número de afiliado → 400 RN08
+POST {{api}}/clientes
+Content-Type: application/json
+
+{
+  "dni": "27000111",
+  "nombre": "Luis",
+  "apellido": "Sosa",
+  "telefono": "381-555-0004",
+  "esAfiliado": true,
+  "domicilio": { "calle": "Maipú", "numero": "10", "localidad": "Yerba Buena" }
+}
+
+### 20. DNI con puntos y sin domicilio → 400, con un mensaje por cada campo mal cargado
+POST {{api}}/clientes
+Content-Type: application/json
+
+{
+  "dni": "27.000.111",
+  "nombre": "Luis",
+  "apellido": "Sosa",
+  "telefono": "381-555-0004"
+}
+
+### 21. Modificar a la clienta 3: cambia el teléfono y el domicilio
+PUT {{api}}/clientes/3
+Content-Type: application/json
+
+{
+  "dni": "28999111",
+  "nombre": "Ana",
+  "apellido": "Ruiz",
+  "telefono": "381-555-9999",
+  "esAfiliado": true,
+  "nroAfiliado": "AF-20001",
+  "domicilio": { "calle": "San Martín", "numero": "S/N", "localidad": "Tafí Viejo" }
+}
+
+### 22. Eliminar a María (cliente 1), que tiene reservas → 409 RN11
+DELETE {{api}}/clientes/1
+
+### 23. Eliminar a la clienta 3, que no tiene reservas → 204
+DELETE {{api}}/clientes/3
+
+
+# ======================================================================
+#  TARIFAS (Sprint 2)
+# ======================================================================
+
+### 24. Lista de precios para afiliados
+GET {{api}}/tarifas?condicion=Afiliado
+
+### 25. Las dos tarifas del Quincho 1
+GET {{api}}/espacios/2/tarifas
+
+### 26. Subir la tarifa de no afiliados del Quincho 1 a $180.000 → guarda la fecha de hoy
+PUT {{api}}/espacios/2/tarifas/NoAfiliado
+Content-Type: application/json
+
+{ "monto": 180000 }
+
+### 27. La reserva del paso 3 sigue valiendo $150.000: el precio quedó fijo al reservar
+GET {{api}}/reservas/2
+
+### 28. Quitar la tarifa de no afiliados de la cancha de pádel → 204
+DELETE {{api}}/espacios/7/tarifas/NoAfiliado
+
+### 29. Juan, que no es afiliado, quiere la cancha de pádel → 422 RN07: no hay tarifa para su condición
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 2,
+  "idsEspacios": [7],
+  "fechaHoraInicio": "2027-04-12T18:00:00",
+  "fechaHoraFin": "2027-04-12T19:00:00"
+}
+
+### 30. Volver a cargar esa tarifa
+PUT {{api}}/espacios/7/tarifas/NoAfiliado
+Content-Type: application/json
+
+{ "monto": 25000 }
+
+
+# ======================================================================
+#  MEDIOS DE PAGO (Sprint 2)
+# ======================================================================
+
+### 31. Medios de pago activos
+GET {{api}}/tipos-pago?soloActivos=true
+
+### 32. Agregar un medio de pago → 201 (le toca el id 3)
+POST {{api}}/tipos-pago
+Content-Type: application/json
+
+{ "nombre": "Tarjeta de débito" }
+
+### 33. Darlo de baja → 204. Es una baja lógica: queda con "activo": false
+DELETE {{api}}/tipos-pago/3
+
+### 34. Pagar con el medio dado de baja → 422 TIPO_PAGO (la reserva 3 es la del paso 11)
+POST {{api}}/reservas/3/pagos
+Content-Type: application/json
+
+{
+  "concepto": "Seña",
+  "detalles": [ { "idTipoPago": 3, "monto": 60000 } ]
+}

@@ -10,6 +10,9 @@ public static class ConsultasReserva
     /// Vigente = confirmada, o pendiente que todavía no venció (RN06).
     /// Dos horarios se pisan si cada uno empieza antes de que termine el otro. Por eso una
     /// reserva que termina a las 14 no choca con otra que empieza a las 14.
+    /// SUPUESTO S2: se alquila por horario libre, con inicio y fin, y no por turnos fijos.
+    /// SUPUESTO C1: el horario ocupado va del inicio al fin del evento. El ingreso para decorar
+    /// (RN17) no bloquea el espacio.
     /// </summary>
     /// <param name="limitePendientes">Las pendientes registradas antes de esta fecha ya vencieron (null = no vencen).</param>
     public static IQueryable<ReservaEspacio> QueOcupan(this IQueryable<ReservaEspacio> renglones,
