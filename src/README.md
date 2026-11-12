@@ -1,15 +1,20 @@
 # Backend · Sistema de reservas del Complejo ATEP
 
 API REST en ASP.NET Core (.NET 10) con Entity Framework Core y MySQL 8. Implementa el **DER v4 del
-grupo** (artefacto «DER Complejo ATEP», 02/11/2026) y las reglas de negocio del relevamiento.
+grupo** (02/11/2026) y las reglas de negocio del relevamiento.
 
-**Estado (Sprint 1).** La base está completa (13 tablas). La API tiene:
+**Estado (Sprint 2).** La base está completa (13 tablas) y la API cubre los requisitos RF01 a RF19:
 
 - **Espacios:** CRUD completo, que es el ejemplo a copiar.
-- **Reservas:** alta, consulta, calendario, modificación y cancelación, con las reglas RN01, RN03, RN05, RN06, RN07, RN08 y RN10.
-- **Pagos:** seña y saldo, con uno o varios medios de pago por pago (PAGO + DETALLE_PAGO), y las reglas RN05 y RN15.
+- **Clientes:** CRUD con su domicilio, búsqueda por DNI y por nombre (RN08, RN11).
+- **Tarifas y medios de pago:** lista de precios, una tarifa por espacio y condición, y medios de pago con baja lógica.
+- **Reservas:** alta, calendario, modificación y cancelación (RN01, RN03, RN05, RN06, RN07, RN10).
+- **Pagos:** seña y saldo, con uno o varios medios por pago (RN05, RN15).
 
-**Falta:** la API de clientes, tarifas y tipos de pago, y el login con permisos. Ver [Tareas del Sprint 2](#tareas-del-sprint-2).
+**Falta:** el login con perfiles y permisos (RF20 a RF22). Ver [Lo que sigue](#lo-que-sigue).
+
+Varias reglas están programadas sin que el complejo las haya confirmado. Están listadas, con el lugar
+donde se cambia cada una, en [`docs/supuestos.md`](../docs/supuestos.md).
 
 ## Antes de empezar (una sola vez)
 
@@ -53,7 +58,7 @@ Abrí http://localhost:5080/swagger. La primera vez tarda un poco porque descarg
 
 Si aparece `Access denied for user 'root'`, revisá el paso 2. Si aparece `Unknown database`, el paso 1.
 
-## Paso 4 · Recorrer una reserva de punta a punta
+## Paso 4 · Recorrer el sistema a mano
 
 Abrí `AtepReservas.Api/AtepReservas.Api.http` y mandá los pedidos en orden, con la base recién creada.
 Las fechas van en hora local y sin `Z` al final, por ejemplo `"2027-04-10T20:00:00"`.
@@ -61,7 +66,7 @@ Las fechas van en hora local y sin `Z` al final, por ejemplo `"2027-04-10T20:00:
 | # | Pedido | Qué tenés que ver | Regla |
 | --- | --- | --- | --- |
 | 1-2 | Espacios y quinchos libres | Los 7 espacios, y los dos quinchos libres el 10/04/2027 | — |
-| 3 | Reserva de Juan en el Quincho 1 | 201, `Pendiente`, monto $150.000, seña requerida $75.000 y hasta cuándo guarda el lugar | RN05, RN06, RN07, RN08, RN15 |
+| 3 | Reserva de Juan en el Quincho 1 | 201, `Pendiente`, monto $150.000, seña requerida $75.000 y hasta cuándo guarda el lugar | RN05, RN06, RN07, RN15 |
 | 4 | Otra reserva que se pisa | 409 con `"regla": "RN01"`, la reserva con la que choca y el Quincho 2 como alternativa | RN01 |
 | 5 | 300 invitados en un quincho | 422 | RN03 |
 | 6 | Seña de $75.000: $50.000 en efectivo y $25.000 por transferencia | Un pago con dos detalles; la reserva pasa a `Confirmada` | RN05, RN15 |
@@ -69,10 +74,43 @@ Las fechas van en hora local y sin `Z` al final, por ejemplo `"2027-04-10T20:00:
 | 8-9 | Detalle y calendario | La seña, el total pagado y el saldo; las reservas de abril | — |
 | 10 | Cancelar | `Cancelada`: la reserva sigue existiendo, no se borra | RN10 |
 | 11 | El pedido 4 otra vez | Ahora entra, porque el horario quedó libre | RN01 |
-| 14 | Pagos de la reserva de ejemplo | La seña de $175.000 dividida en efectivo y transferencia | — |
+| 12-14 | Espacios y pagos de ejemplo | Un espacio nuevo, el nombre repetido (409) y la seña pagada con dos medios | — |
+| 15-16 | Buscar clientes | «gomez», sin tilde, encuentra a Gómez | — |
+| 17-20 | Registrar clientes | 201 con su domicilio; DNI repetido (409); afiliado sin número (400); DNI con puntos (400) | RN08 |
+| 21-23 | Modificar y eliminar | No deja eliminar a María, que tiene reservas (409) | RN11 |
+| 24-27 | Tarifas | Al subir una tarifa, la reserva del paso 3 sigue valiendo $150.000 | RN07 |
+| 28-30 | Espacio sin tarifa | Sin tarifa para su condición, Juan no puede reservar la cancha de pádel (422) | RN07 |
+| 31-34 | Medios de pago | Un medio dado de baja no se acepta en un pago nuevo (422) | — |
 
 Juan no es afiliado (RN08), por eso paga la tarifa de no afiliado del quincho ($150.000) y la seña es
 el 50 % (RN15).
+
+## Paso 5 · Correr las pruebas automáticas
+
+Con la base recién creada y la API andando, en otra terminal y desde la raíz del repositorio:
+
+```bash
+dotnet run --project tests/PruebasApi
+```
+
+Son 87 casos que recorren todo lo anterior y, además, mandan pedidos simultáneos. Tiene que terminar
+con `Resultado: 87 de 87 casos aprobados.` El detalle está en [`tests/README.md`](../tests/README.md).
+
+> **Para qué sirven.** Cada vez que cambies algo, corrélas antes de subir: si un cambio rompe una regla
+> que ya andaba, el caso de esa regla falla y te dice cuál es.
+
+## La API de un vistazo
+
+| Módulo | Pedidos |
+| --- | --- |
+| Espacios | `GET` `POST /api/espacios` · `GET` `PUT` `DELETE /api/espacios/{id}` · `GET /api/espacios/disponibles` |
+| Clientes | `GET` `POST /api/clientes` · `GET` `PUT` `DELETE /api/clientes/{id}` |
+| Tarifas | `GET /api/tarifas` · `GET /api/espacios/{id}/tarifas` · `PUT` `DELETE /api/espacios/{id}/tarifas/{condicion}` |
+| Reservas | `GET` `POST /api/reservas` · `GET` `PUT` `DELETE /api/reservas/{id}` |
+| Pagos | `GET` `POST /api/reservas/{id}/pagos` |
+| Medios de pago | `GET` `POST /api/tipos-pago` · `GET` `PUT` `DELETE /api/tipos-pago/{id}` |
+
+Qué requisito cumple cada pedido está en [`docs/requisitos.md`](../docs/requisitos.md).
 
 ## Cómo está armado
 
@@ -128,8 +166,8 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
    alguien de la administración y un cliente desde la web piden el mismo quincho en el mismo segundo.
    Sin bloqueo, los dos consultan, los dos ven el horario libre y quedan guardadas las dos reservas. Con
    el bloqueo, el segundo espera a que termine el primero y recién entonces consulta: ya ve la reserva
-   del primero y recibe el 409. Se probó en MySQL con dos sesiones simultáneas: sin `FOR UPDATE`
-   quedaron dos reservas en el mismo horario, y con `FOR UPDATE` la segunda esperó y vio la primera.
+   del primero y recibe el 409. Lo prueba el caso SIM-01, que manda ocho reservas iguales al mismo
+   tiempo: con el bloqueo se registra una sola, y al quitarlo se registran varias.
 5. **Controlar los espacios, la capacidad (RN03) y la superposición (RN01).** Dos horarios se pisan si
    cada uno empieza antes de que termine el otro: `inicio_existente < fin_nuevo` y
    `fin_existente > inicio_nuevo`. Cuentan las reservas confirmadas y las pendientes que todavía no
@@ -143,36 +181,43 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
    se lanzó una excepción, la transacción se deshace sola.
 
 Los pagos siguen la misma idea en `PagoService.RegistrarAsync`: se bloquea la reserva para que dos pagos
-simultáneos no superen el saldo, y se guarda un `PAGO` con un `DETALLE_PAGO` por cada medio usado.
+simultáneos no superen el saldo (caso SIM-04), y se guarda un `PAGO` con un `DETALLE_PAGO` por cada
+medio usado.
 
 ## Cómo sumar un CRUD (el patrón)
 
-Espacios es el ejemplo completo. Para Clientes, Tarifas o Tipos de pago:
+Hay tres ejemplos, de menor a mayor:
 
-1. **DTOs** (`DTOs/ClienteDtos.cs`): un `record ClienteDto` para lo que sale y una clase
-   `ClienteGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
-2. **Service** (`Services/ClienteService.cs`): copiá `EspacioService` y cambiá las reglas.
-3. **Registro** en `Program.cs`: `builder.Services.AddScoped<ClienteService>();`
-4. **Controller** (`Controllers/ClientesController.cs`): copiá `EspaciosController`.
-5. **Pedidos de prueba** en el `.http`, uno por cada regla.
+- **`TipoPagoService`:** el más simple, una tabla sola.
+- **`EspacioService`:** agrega filtros y una consulta de disponibilidad.
+- **`ClienteService`:** guarda dos tablas juntas, el cliente y su domicilio.
+
+Para sumar otro, por ejemplo Empleados:
+
+1. **DTOs** (`DTOs/EmpleadoDtos.cs`): un `record EmpleadoDto` para lo que sale y una clase
+   `EmpleadoGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
+2. **Service** (`Services/EmpleadoService.cs`): copiá el que más se parezca y cambiá las reglas.
+3. **Registro** en `Program.cs`: `builder.Services.AddScoped<EmpleadoService>();`
+4. **Controller** (`Controllers/EmpleadosController.cs`): copiá `ClientesController`.
+5. **Pruebas:** los pedidos en el `.http` y los casos en `tests/PruebasApi/Program.cs`, uno por cada regla.
+6. **Documentación:** su fila en `docs/requisitos.md` y, si programaste algo sin confirmar, en
+   `docs/supuestos.md`.
 
 Las entidades ya existen (en `Models/` están todas las del DER) y las tablas también.
 
-## Tareas del Sprint 2
+## Lo que sigue
 
-Es una propuesta de reparto; la ajustan entre ustedes. Que cada uno trabaje en su rama y suba un
-*pull request*: así el historial de GitHub muestra qué hizo cada integrante.
+Una tarea está terminada cuando tiene su código, sus casos de prueba y su renglón en la documentación,
+todo en el mismo *pull request*.
 
-| Tarea | Qué tiene que cumplir | Propuesta |
-| --- | --- | --- |
-| **Clientes** (CRUD) | El cliente se crea junto con su domicilio, en una sola transacción (S6). DNI único (409). RN08: si `esAfiliado`, `nroAfiliado` es obligatorio (400). RN11: no se elimina si tiene reservas (409). Búsqueda por DNI: `GET /api/clientes?dni=30111222`. | Valentina |
-| **Tarifas y tipos de pago** | Tarifas dentro del espacio: `GET /api/espacios/{id}/tarifas` y `PUT /api/espacios/{id}/tarifas/{condicion}`, que cambia el monto y pone la fecha de hoy en `fecha_actualizacion`. Hay una sola por espacio y condición (S3). Tipos de pago con baja lógica (`activo`). | Emiliano |
-| **Datos reales** | Reemplazar lo marcado `[PRUEBA]` en `02_datos_iniciales.sql`: espacios, capacidades y tarifas del complejo. | Emiliano |
-| **Login y permisos** | Usuario y clave con JWT. Un usuario puede usar un permiso si la jerarquía de su perfil es igual o más alta (número menor o igual) que la del perfil mínimo del permiso (S7). RN19: el cliente solo ve lo suyo. RN12: solo el jefe modifica tarifas. El usuario conectado reemplaza a `IdUsuarioProvisorio`. | Matías |
+| Tarea | Qué tiene que cumplir |
+| --- | --- |
+| **Login y permisos** (RF20 a RF22) | Usuario y clave con JWT. Un usuario puede usar un permiso si la jerarquía de su perfil es igual o más alta (número menor o igual) que la del perfil mínimo del permiso (S7). RN19: el cliente solo ve lo suyo. RN12: solo el jefe modifica tarifas. El usuario conectado reemplaza a `IdUsuarioProvisorio`. |
+| **Empleados** | CRUD con su domicilio, igual que Clientes. Hace falta para darles un usuario. |
+| **Datos reales** | Reemplazar lo marcado `[PRUEBA]` en `02_datos_iniciales.sql`: espacios, capacidades y tarifas del complejo. |
+| **Alcance** | Definir si hay pantallas y qué pasa con WhatsApp (A1 y A2 en `docs/supuestos.md`), y actualizar el README principal. |
 
-## Decisiones y supuestos
-
-**Decisiones técnicas**
+## Decisiones técnicas
 
 - **.NET 10** (LTS) con **EF Core 9** a través de **Pomelo 9.0.0**, el proveedor de MySQL más usado.
   Pomelo todavía no tiene una versión para EF Core 10, y EF Core 9 funciona en .NET 10.
@@ -181,19 +226,8 @@ Es una propuesta de reparto; la ajustan entre ustedes. Que cada uno trabaje en s
 - RN06 no necesita una columna nueva: el vencimiento de una reserva pendiente se calcula desde
   `fecha_registro` más las horas configuradas. Al vencer, la reserva pasa al estado `Vencida`.
 - Las bajas de espacios y de medios de pago son lógicas. Las reservas nunca se borran (RN10).
-
-**Supuestos del código.** Se suman a los S2 a S7 del DER. Si el complejo dice otra cosa, cada uno se
-cambia en un solo lugar.
-
-| Supuesto | Dónde se cambia |
-| --- | --- |
-| El horario ocupado va de `fecha_hora_inicio` a `fecha_hora_fin`; el ingreso para decorar (RN17) no bloquea el espacio. | `ConsultasReserva.QueOcupan` |
-| RN03 suma la capacidad de todos los espacios elegidos. | `ReservaService.ValidarCapacidad` |
-| RN06: una reserva pendiente guarda el lugar 72 horas sin seña. Con 0, las pendientes no vencen. | `appsettings.json`, sección `Reglas` |
-| RN15: la seña es el 50 % con un mínimo de $50.000, y nunca más que el total. A una cancha de $40.000 se le cobra todo. | `appsettings.json`, sección `Reglas` |
-| No se cargan reservas con fecha pasada. | `ReservaService.ValidarHorario` |
-| Para cambiar los espacios de una reserva, se cancela y se hace otra. | `ReservaService.ModificarAsync` |
-| Una persona puede ser cliente y empleado a la vez: el DNI no se repite dentro de cada tabla, pero sí entre ellas. | `01_esquema.sql` |
+- Una persona puede ser cliente y empleado a la vez: el DNI no se repite dentro de cada tabla, pero sí
+  puede estar en las dos.
 
 Dos consecuencias del DER para tener en cuenta:
 
@@ -202,13 +236,3 @@ Dos consecuencias del DER para tener en cuenta:
 - Con los perfiles escalonados (S7), el Personal del complejo también hereda el permiso `RESERVAS_PROPIAS`
   del Cliente. No molesta, pero muestra el límite del supuesto: si aparece un perfil que no encaja en la
   escalera, vuelve `PERFIL_PERMISO`.
-
-**Preguntas para el complejo.** Salen del relevamiento y de lo que apareció al programar.
-
-- ¿Las canchas se alquilan por turnos fijos o por horas libres? ¿Hay turnos fijos semanales? (S2, S5)
-- ¿Las canchas se cobran por hora? (S3)
-- ¿Cuántas horas o días se guarda una reserva sin seña (RN06)?
-- ¿La seña siempre es el 50 % con un mínimo de $50.000? ¿Las canchas también llevan seña?
-- ¿Qué pasa con la seña cuando se cancela? ¿Hay devoluciones o descuentos?
-- ¿El ingreso para decorar ocupa el espacio? ¿Pasa solo los viernes?
-- ¿Hay que pasar al sistema las reservas que ya están anotadas en el cuaderno?

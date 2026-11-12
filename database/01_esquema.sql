@@ -3,7 +3,8 @@
 --  01_esquema.sql — crea la base de datos y las 13 tablas del DER v4
 --
 --  Fuente: "DER Complejo ATEP", versión 4 (02/11/2026) del grupo.
---  Las marcas S2 a S7 son los supuestos del DER que falta confirmar.
+--  Las marcas SUPUESTO S2 a S7 son los supuestos del DER que falta
+--  confirmar con el complejo. Están explicados en docs/supuestos.md.
 --  Requiere MySQL 8.0.16 o superior: desde esa versión MySQL respeta
 --  las restricciones CHECK (antes las ignoraba sin avisar).
 --
@@ -22,8 +23,8 @@ USE atep_reservas;
 
 -- ---------------------------------------------------------------------
 --  Acceso al sistema: PERFIL, PERMISO y USUARIO
---  S7: los perfiles son escalonados. Cada permiso guarda el perfil mínimo
---  que lo tiene, y los perfiles de más jerarquía también lo tienen.
+--  SUPUESTO S7: los perfiles son escalonados. Cada permiso guarda el perfil
+--  mínimo que lo tiene, y los perfiles de más jerarquía también lo tienen.
 -- ---------------------------------------------------------------------
 CREATE TABLE perfil (
   id_perfil    INT           NOT NULL AUTO_INCREMENT,
@@ -61,8 +62,8 @@ CREATE TABLE usuario (
 
 -- ---------------------------------------------------------------------
 --  Personas: DOMICILIO, CLIENTE y EMPLEADO
---  S6: cada cliente y cada empleado tienen un solo domicilio, y un
---  domicilio es de una sola persona.
+--  SUPUESTO S6: cada cliente y cada empleado tienen un solo domicilio, y
+--  un domicilio es de una sola persona.
 -- ---------------------------------------------------------------------
 CREATE TABLE domicilio (
   id_domicilio   INT          NOT NULL AUTO_INCREMENT,
@@ -84,8 +85,9 @@ CREATE TABLE cliente (
   apellido      VARCHAR(60)   NOT NULL,
   telefono      VARCHAR(25)   NOT NULL,
   email         VARCHAR(120)  NULL,
-  es_afiliado   BOOLEAN       NOT NULL DEFAULT FALSE,   -- S4
-  nro_afiliado  VARCHAR(20)   NULL,                     -- S4
+  -- SUPUESTO S4: la afiliación es un dato del cliente; no se guarda su vigencia ni el grupo familiar.
+  es_afiliado   BOOLEAN       NOT NULL DEFAULT FALSE,
+  nro_afiliado  VARCHAR(20)   NULL,
   CONSTRAINT pk_cliente            PRIMARY KEY (id_cliente),
   CONSTRAINT uq_cliente_dni        UNIQUE (dni),
   -- UNIQUE sobre la FK = relación uno a uno: un domicilio no se comparte (S6).
@@ -125,7 +127,7 @@ CREATE TABLE empleado (
 CREATE TABLE espacio (
   id_espacio   INT           NOT NULL AUTO_INCREMENT,
   nombre       VARCHAR(60)   NOT NULL,
-  tipo         VARCHAR(20)   NOT NULL,                -- S5: las canchas son un tipo más
+  tipo         VARCHAR(20)   NOT NULL,                -- SUPUESTO S5: las canchas son un tipo más
   descripcion  VARCHAR(300)  NULL,                    -- servicios incluidos
   capacidad    INT           NOT NULL,
   habilitado   BOOLEAN       NOT NULL DEFAULT TRUE,   -- baja lógica: FALSE = no se puede reservar
@@ -135,7 +137,7 @@ CREATE TABLE espacio (
   CONSTRAINT ck_espacio_capacidad  CHECK (capacidad > 0)
 );
 
--- S3: hay un precio por espacio y condición. Cuando cambia, se actualiza el
+-- SUPUESTO S3: hay un precio por espacio y condición. Cuando cambia, se actualiza el
 -- monto y la fecha; las reservas ya hechas no cambian porque guardan su monto_total.
 CREATE TABLE tarifa (
   id_tarifa            INT            NOT NULL AUTO_INCREMENT,
@@ -165,7 +167,7 @@ CREATE TABLE reserva (
   id_reserva          INT            NOT NULL AUTO_INCREMENT,
   id_cliente          INT            NOT NULL,
   id_usuario          INT            NOT NULL,   -- quién la registró
-  fecha_hora_inicio   DATETIME       NOT NULL,   -- S2: horario libre. Fecha y hora juntas,
+  fecha_hora_inicio   DATETIME       NOT NULL,   -- SUPUESTO S2: horario libre. Fecha y hora juntas,
   fecha_hora_fin      DATETIME       NOT NULL,   -- porque un evento puede terminar a las 4 del día siguiente
   ingreso_decoracion  DATETIME       NULL,       -- RN17
   tipo_evento         VARCHAR(60)    NULL,
