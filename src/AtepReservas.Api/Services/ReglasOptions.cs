@@ -13,8 +13,8 @@ public class ReglasOptions
     public decimal SeniaMinima { get; set; } = 50000;
 
     /// <summary>
-    /// RN06 (falta que el complejo defina la X): horas que una reserva pendiente guarda el
-    /// lugar sin seña, contadas desde fecha_registro. Con 0, las pendientes no vencen.
+    /// SUPUESTO RN06: horas que una reserva pendiente guarda el lugar sin seña, contadas desde
+    /// fecha_registro. El complejo todavía no definió el plazo. Con 0, las pendientes no vencen.
     /// </summary>
     public int HorasVencimientoPendiente { get; set; } = 72;
 
@@ -22,8 +22,9 @@ public class ReglasOptions
     public int IdUsuarioProvisorio { get; set; } = 1;
 
     /// <summary>
-    /// RN15: el porcentaje del total, nunca menos que el mínimo y nunca más que el total.
-    /// Ej.: salón a $350.000 → seña $175.000; cancha a $40.000 → el mínimo supera el precio, se paga todo.
+    /// RN15: el porcentaje del total, nunca menos que el mínimo.
+    /// SUPUESTO C2: la seña nunca supera el total. Si el mínimo es mayor que el precio, se paga todo.
+    /// Ej.: salón a $350.000 → seña $175.000; cancha a $40.000 → seña $40.000.
     /// </summary>
     public decimal CalcularSenia(decimal montoTotal)
     {

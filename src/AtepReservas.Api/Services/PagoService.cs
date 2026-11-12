@@ -50,9 +50,7 @@ public class PagoService
         // y calcula el saldo con el primer pago ya guardado (así nunca se cobra de más).
         await _db.Database.ExecuteSqlAsync($"SELECT id_reserva FROM reserva WHERE id_reserva = {idReserva} FOR UPDATE");
 
-        var reserva = await _db.Reservas
-            .Include(r => r.Pagos).ThenInclude(p => p.Detalles)
-            .FirstOrDefaultAsync(r => r.IdReserva == idReserva)
+        var reserva = await _db.Reservas.FindAsync(idReserva)
             ?? throw new NoEncontradoException($"No existe la reserva {idReserva}.");
 
         if (reserva.Estado is EstadoReserva.Cancelada or EstadoReserva.Vencida)
@@ -72,7 +70,11 @@ public class PagoService
                 StatusCodes.Status422UnprocessableEntity);
 
         var totalDelPago = dto.Detalles.Sum(d => d.Monto);
-        var pagado = reserva.Pagos.Sum(p => p.Total);
+        // Lo pagado hasta ahora: la suma de los detalles de todos los pagos de la reserva.
+        // La suma la hace MySQL (SELECT SUM...), sin traer los pagos a memoria.
+        var pagado = await _db.DetallesPago
+            .Where(d => d.Pago.IdReserva == idReserva)
+            .SumAsync(d => d.Monto);
         var saldo = reserva.MontoTotal - pagado;
         if (totalDelPago > saldo)
             throw new ReglaNegocioException("SALDO",
@@ -82,15 +84,18 @@ public class PagoService
         // Un PAGO con un DETALLE_PAGO por cada medio. EF guarda los dos niveles juntos.
         var pago = new Pago
         {
+            IdReserva = idReserva,
             NroTicket = dto.NroTicket?.Trim(),
             Concepto = dto.Concepto.Trim(),
             Fecha = DateTime.Now,
         };
         foreach (var detalle in dto.Detalles)
             pago.Detalles.Add(new DetallePago { IdTipoPago = detalle.IdTipoPago, Monto = detalle.Monto });
-        reserva.Pagos.Add(pago);
+        _db.Pagos.Add(pago);
 
         // RN05 + RN15: con la seña completa, la reserva queda confirmada y deja de vencer.
+        // SUPUESTO C3: la seña se puede completar en varios pagos. Se compara todo lo pagado
+        // hasta ahora, no solo este pago.
         if (reserva.Estado == EstadoReserva.Pendiente
             && pagado + totalDelPago >= _reglas.CalcularSenia(reserva.MontoTotal))
         {

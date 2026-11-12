@@ -45,8 +45,15 @@ supuestos del DER:
 | `ck_dp_monto` | Un detalle de pago en cero o negativo. |
 | FK sin `CASCADE` | Borrar un cliente con reservas (RN11), una reserva con pagos, un perfil que es mínimo de algún permiso o un medio de pago ya usado. |
 
+Para comprobarlas hay un script, `tests/restricciones.sql`, que intenta guardar 20 datos inválidos y
+muestra cuáles rechazó la base. Cómo correrlo está en [`tests/README.md`](../tests/README.md).
+
 La superposición de horarios (RN01) **no** se controla con una restricción: la controla la API dentro de
 una transacción, bloqueando los espacios. La explicación está en `src/README.md`.
 
+La descripción de cada tabla y cada columna está en
+[`docs/diccionario-de-datos.md`](../docs/diccionario-de-datos.md).
+
 Los datos marcados `[PRUEBA]` en `02_datos_iniciales.sql` son inventados: hay que reemplazarlos por los
-reales del complejo antes de la presentación.
+reales del complejo antes de la presentación. La lista completa de lo que falta confirmar está en
+[`docs/supuestos.md`](../docs/supuestos.md).

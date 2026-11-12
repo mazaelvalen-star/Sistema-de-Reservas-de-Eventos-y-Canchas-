@@ -18,6 +18,9 @@ builder.Services.Configure<ReglasOptions>(builder.Configuration.GetSection("Regl
 
 // 3) Services: acá vive la lógica de negocio. Scoped = uno nuevo por cada request.
 builder.Services.AddScoped<EspacioService>();
+builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<TarifaService>();
+builder.Services.AddScoped<TipoPagoService>();
 builder.Services.AddScoped<ReservaService>();
 builder.Services.AddScoped<PagoService>();
 

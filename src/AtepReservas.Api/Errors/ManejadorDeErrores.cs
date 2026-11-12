@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 
 namespace AtepReservas.Api.Errors;
@@ -51,12 +50,27 @@ public class ManejadorDeErrores : IExceptionHandler
     {
         ReglaNegocioException e => Crear(e.StatusCode, "No se cumple una regla de negocio", e.Message, e.Regla, e.Datos),
         NoEncontradoException e => Crear(StatusCodes.Status404NotFound, "No encontrado", e.Message),
-        // Red de seguridad: si un service se olvida de validar algo, la restricción
-        // de la base lo frena y se devuelve un error claro en lugar de un 500.
-        DbUpdateException { InnerException: MySqlException mysql } => DesdeMySql(mysql),
-        MySqlException mysql => DesdeMySql(mysql),
-        _ => null
+        // Red de seguridad: si un service se olvida de validar algo, o si dos operaciones
+        // simultáneas chocan, la base lo frena y se devuelve un error claro en lugar de un 500.
+        _ => BuscarErrorDeMySql(excepcion) is { } mysql ? DesdeMySql(mysql) : null
     };
+
+    /// <summary>
+    /// El error de MySQL casi nunca llega solo: viene adentro de otra excepción (DbUpdateException
+    /// cuando falla un guardado, InvalidOperationException cuando hubo un deadlock), a veces en
+    /// varios niveles. Se recorre la cadena de InnerException hasta encontrarlo.
+    /// </summary>
+    private static MySqlException? BuscarErrorDeMySql(Exception? excepcion)
+    {
+        while (excepcion is not null)
+        {
+            if (excepcion is MySqlException mysql)
+                return mysql;
+            excepcion = excepcion.InnerException;
+        }
+
+        return null;
+    }
 
     private static ProblemDetails? DesdeMySql(MySqlException mysql) => (int)mysql.ErrorCode switch
     {

@@ -111,9 +111,10 @@ public class ReservaService
         ValidarCapacidad(dto.CantidadInvitados, espacios);                                  // RN03
         await VerificarSuperposicionAsync(espacios, inicio, fin, ahora, excluirReserva: null); // RN01
 
-        // RN07: cada espacio se cobra con su tarifa para la condición del cliente (hay una
-        // sola por espacio y condición, S3). El total queda guardado en la reserva: si mañana
-        // cambia la tarifa, esta reserva sigue valiendo lo que se acordó.
+        // SUPUESTO RN07: cada espacio se cobra con su tarifa para la condición del cliente (hay
+        // una sola por espacio y condición, S3).
+        // SUPUESTO C4: el precio queda fijo en este momento, al registrar la reserva, y no recién
+        // cuando se paga la seña. Si mañana cambia la tarifa, esta reserva sigue valiendo lo mismo.
         var tarifas = await _db.Tarifas
             .Where(t => idsEspacios.Contains(t.IdEspacio) && t.Condicion == condicion)
             .ToListAsync();
@@ -133,7 +134,9 @@ public class ReservaService
             FechaHoraInicio = inicio,
             FechaHoraFin = fin,
             MontoTotal = tarifas.Sum(t => t.Monto),
-            Estado = EstadoReserva.Pendiente,           // RN05 / RN18
+            // RN05: toda reserva nace pendiente y la confirma el pago de la seña.
+            // SUPUESTO RN18: va a valer igual para las que cargue el cliente desde la web.
+            Estado = EstadoReserva.Pendiente,
             FechaRegistro = ahora,                      // desde acá se cuenta el plazo de la seña (RN06)
         };
         CopiarDatosDelEvento(dto, reserva);
@@ -149,7 +152,10 @@ public class ReservaService
 
     // ================================================================== modificación
 
-    /// <summary>Cambia horario y datos del evento. Los espacios y el monto se mantienen.</summary>
+    /// <summary>
+    /// Cambia horario y datos del evento. Los espacios y el monto se mantienen.
+    /// SUPUESTO C6: para cambiar los espacios de una reserva, se cancela y se registra otra.
+    /// </summary>
     public async Task<ReservaDetalleDto> ModificarAsync(int id, ReservaModificarDto dto)
     {
         var inicio = dto.FechaHoraInicio!.Value;
@@ -184,7 +190,11 @@ public class ReservaService
 
     // ================================================================== cancelación
 
-    /// <summary>RN10: la reserva no se borra; pasa a Cancelada y su horario queda libre.</summary>
+    /// <summary>
+    /// SUPUESTO RN10: la reserva no se borra; pasa a Cancelada y su horario queda libre.
+    /// SUPUESTO C7: al cancelar no se calcula ninguna devolución. Los pagos ya registrados
+    /// quedan como están, y qué pasa con la seña lo resuelve el complejo fuera del sistema.
+    /// </summary>
     public async Task<ReservaDetalleDto> CancelarAsync(int id)
     {
         await MarcarVencidasAsync();
@@ -202,7 +212,6 @@ public class ReservaService
     /// <summary>
     /// RN06: las pendientes que pasaron su plazo sin seña (contado desde fecha_registro)
     /// pasan a Vencida. Se ejecuta antes de cada operación, así no hace falta un proceso aparte.
-    /// ExecuteUpdate manda un solo UPDATE a MySQL, sin traer las reservas a memoria.
     /// </summary>
     public async Task MarcarVencidasAsync()
     {
@@ -210,9 +219,22 @@ public class ReservaService
         if (limite is null)
             return;   // vencimiento desactivado
 
+        // Primero se consulta si hay alguna vencida. Un SELECT común no bloquea filas, y casi
+        // siempre devuelve una lista vacía: en ese caso no se ejecuta ningún UPDATE.
+        // No conviene mandar directamente un UPDATE que recorra todas las pendientes: bloquea
+        // filas que un pago simultáneo puede estar usando, y MySQL corta a uno de los dos (deadlock).
         var limiteValor = limite.Value;
-        await _db.Reservas
+        var idsVencidas = await _db.Reservas
             .Where(r => r.Estado == EstadoReserva.Pendiente && r.FechaRegistro <= limiteValor)
+            .Select(r => r.IdReserva)
+            .ToListAsync();
+        if (idsVencidas.Count == 0)
+            return;
+
+        // Se actualizan por id, y solo las que siguen pendientes: si justo se registró la seña de
+        // alguna, ya está confirmada y no se toca. ExecuteUpdate manda un solo UPDATE a MySQL.
+        await _db.Reservas
+            .Where(r => idsVencidas.Contains(r.IdReserva) && r.Estado == EstadoReserva.Pendiente)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.Estado, EstadoReserva.Vencida));
     }
 
@@ -223,9 +245,12 @@ public class ReservaService
         if (fin <= inicio)
             throw new ReglaNegocioException("HORARIO", "El fin tiene que ser posterior al inicio.",
                 StatusCodes.Status400BadRequest);
+        // SUPUESTO C5: no se cargan reservas con fecha pasada.
         if (inicio <= ahora)
             throw new ReglaNegocioException("HORARIO", "No se puede reservar en una fecha que ya pasó.",
                 StatusCodes.Status400BadRequest);
+        // RN17 está confirmada para los viernes. SUPUESTO C1: se acepta un ingreso para decorar
+        // cualquier día, siempre que sea antes del inicio.
         if (ingresoDecoracion is not null && ingresoDecoracion > inicio)
             throw new ReglaNegocioException("RN17", "El ingreso para decorar tiene que ser antes del inicio del evento.",
                 StatusCodes.Status400BadRequest);
@@ -255,7 +280,7 @@ public class ReservaService
                 StatusCodes.Status422UnprocessableEntity);
     }
 
-    /// <summary>RN03: los invitados no pueden superar la capacidad sumada de los espacios elegidos.</summary>
+    /// <summary>SUPUESTO RN03: los invitados no pueden superar la capacidad sumada de los espacios elegidos.</summary>
     private static void ValidarCapacidad(int? invitados, List<Espacio> espacios)
     {
         if (invitados is null)
