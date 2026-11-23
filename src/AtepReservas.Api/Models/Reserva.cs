@@ -5,13 +5,13 @@ public class Reserva
 {
     public int IdReserva { get; set; }
     public int IdCliente { get; set; }
-    public DateTime FechaHoraInicio { get; set; }      // S2: horario libre, con inicio y fin
+    public DateTime FechaHoraInicio { get; set; }      // S2: horario con inicio y fin; las canchas, por hora
     public DateTime FechaHoraFin { get; set; }         // puede ser del día siguiente (eventos hasta las 4)
-    public DateTime? IngresoDecoracion { get; set; }   // RN17
+    public DateTime? IngresoDecoracion { get; set; }   // RN17: ocupa el espacio desde esta hora
     public string? TipoEvento { get; set; }
     public int? CantidadInvitados { get; set; }        // RN16: se informa al dejar la seña
     public string? DetalleArmado { get; set; }         // RN16
-    public decimal MontoTotal { get; set; }            // RN07: se calcula al reservar y queda fijo
+    public decimal MontoTotal { get; set; }            // RN07; sigue la tarifa hasta pagarse del todo (RN21)
     public EstadoReserva Estado { get; set; } = EstadoReserva.Pendiente;
     public DateTime FechaRegistro { get; set; }
 

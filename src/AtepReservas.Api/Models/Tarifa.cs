@@ -2,7 +2,8 @@ namespace AtepReservas.Api.Models;
 
 /// <summary>
 /// Precio de un espacio para una condición (afiliado o no). Hay uno solo por espacio y
-/// condición (S3): cuando cambia, se actualizan el monto y la fecha.
+/// condición (S3): cuando cambia, se actualizan el monto y la fecha. En las canchas, el monto
+/// es el precio de una hora (RN07).
 /// </summary>
 public class Tarifa
 {

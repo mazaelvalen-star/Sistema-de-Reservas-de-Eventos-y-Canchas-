@@ -6,8 +6,9 @@
 --  La v5 saca EMPLEADO y el acceso al sistema (USUARIO, PERFIL y PERMISO):
 --  el 20/11/2026 el complejo confirmó que no hay sitio web y que el sistema
 --  lo usa una sola persona de la administración, en una computadora.
---  Las marcas SUPUESTO S2 a S6 son los supuestos del DER que falta
---  confirmar con el complejo. Están explicados en docs/supuestos.md.
+--  Las marcas SUPUESTO S4 y S6 son los supuestos del DER que falta
+--  confirmar con el complejo. Están explicados en docs/supuestos.md,
+--  junto con S2, S3 y S5, que el complejo respondió el 23/11/2026.
 --  Requiere MySQL 8.0.16 o superior: desde esa versión MySQL respeta
 --  las restricciones CHECK (antes las ignoraba sin avisar).
 --
@@ -68,7 +69,7 @@ CREATE TABLE cliente (
 CREATE TABLE espacio (
   id_espacio   INT           NOT NULL AUTO_INCREMENT,
   nombre       VARCHAR(60)   NOT NULL,
-  tipo         VARCHAR(20)   NOT NULL,                -- SUPUESTO S5: las canchas son un tipo más
+  tipo         VARCHAR(20)   NOT NULL,                -- las canchas se cobran por hora y sin seña (RN07, RN20)
   descripcion  VARCHAR(300)  NULL,                    -- servicios incluidos
   capacidad    INT           NOT NULL,
   habilitado   BOOLEAN       NOT NULL DEFAULT TRUE,   -- baja lógica: FALSE = no se puede reservar
@@ -78,8 +79,9 @@ CREATE TABLE espacio (
   CONSTRAINT ck_espacio_capacidad  CHECK (capacidad > 0)
 );
 
--- SUPUESTO S3: hay un precio por espacio y condición. Cuando cambia, se actualiza el
--- monto y la fecha; las reservas ya hechas no cambian porque guardan su monto_total.
+-- S3 (confirmado): hay un precio por espacio y condición, que no cambia por día ni por
+-- horario; en las canchas es el precio de una hora (RN07). Cuando cambia, se actualizan el
+-- monto y la fecha, y las reservas sin pagar del todo pasan al precio nuevo (RN21).
 CREATE TABLE tarifa (
   id_tarifa            INT            NOT NULL AUTO_INCREMENT,
   id_espacio           INT            NOT NULL,
@@ -107,13 +109,13 @@ CREATE TABLE tipo_pago (
 CREATE TABLE reserva (
   id_reserva          INT            NOT NULL AUTO_INCREMENT,
   id_cliente          INT            NOT NULL,
-  fecha_hora_inicio   DATETIME       NOT NULL,   -- SUPUESTO S2: horario libre. Fecha y hora juntas,
+  fecha_hora_inicio   DATETIME       NOT NULL,   -- S2: horario con inicio y fin. Fecha y hora juntas,
   fecha_hora_fin      DATETIME       NOT NULL,   -- porque un evento puede terminar a las 4 del día siguiente
-  ingreso_decoracion  DATETIME       NULL,       -- RN17
+  ingreso_decoracion  DATETIME       NULL,       -- RN17: ocupa el espacio desde esta hora
   tipo_evento         VARCHAR(60)    NULL,
   cantidad_invitados  INT            NULL,       -- RN16: se informa al dejar la seña
   detalle_armado      VARCHAR(500)   NULL,       -- RN16: cómo quiere las mesas
-  monto_total         DECIMAL(12,2)  NOT NULL,   -- se calcula al reservar y queda fijo (RN07)
+  monto_total         DECIMAL(12,2)  NOT NULL,   -- RN07; sigue la tarifa hasta pagarse del todo (RN21)
   estado              VARCHAR(20)    NOT NULL DEFAULT 'Pendiente',
   fecha_registro      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pk_reserva             PRIMARY KEY (id_reserva),
@@ -122,7 +124,8 @@ CREATE TABLE reserva (
   CONSTRAINT ck_reserva_decoracion  CHECK (ingreso_decoracion IS NULL OR ingreso_decoracion <= fecha_hora_inicio),
   CONSTRAINT ck_reserva_invitados   CHECK (cantidad_invitados IS NULL OR cantidad_invitados > 0),
   CONSTRAINT ck_reserva_monto       CHECK (monto_total >= 0),
-  -- RN05 (Pendiente → Confirmada), RN10 (Cancelada) y RN06 (Vencida).
+  -- RN05 (Pendiente → Confirmada), RN10 (Cancelada) y C12 (Vencida).
+  -- Solo una reserva confirmada ocupa el espacio (RN06).
   CONSTRAINT ck_reserva_estado      CHECK (estado IN ('Pendiente', 'Confirmada', 'Cancelada', 'Vencida'))
 );
 -- Para el control de superposición y el calendario (búsquedas por horario).

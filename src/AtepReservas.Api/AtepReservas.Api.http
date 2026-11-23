@@ -24,30 +24,7 @@ Content-Type: application/json
   "cantidadInvitados": 30
 }
 
-### 4. Otra reserva en el mismo quincho que se pisa (22 a 2) → 409 RN01, sugiere el Quincho 2
-POST {{api}}/reservas
-Content-Type: application/json
-
-{
-  "idCliente": 1,
-  "idsEspacios": [2],
-  "fechaHoraInicio": "2027-04-10T22:00:00",
-  "fechaHoraFin": "2027-04-11T02:00:00"
-}
-
-### 5. Más invitados que la capacidad → 422 RN03
-POST {{api}}/reservas
-Content-Type: application/json
-
-{
-  "idCliente": 1,
-  "idsEspacios": [3],
-  "fechaHoraInicio": "2027-04-10T20:00:00",
-  "fechaHoraFin": "2027-04-10T23:00:00",
-  "cantidadInvitados": 300
-}
-
-### 6. Seña de la reserva del paso 3 (id 2), pagada en dos partes → pasa a Confirmada (RN05 + RN15)
+### 4. Seña de la reserva del paso 3 (id 2), pagada en dos partes → pasa a Confirmada (RN05 + RN15)
 POST {{api}}/reservas/2/pagos
 Content-Type: application/json
 
@@ -58,6 +35,30 @@ Content-Type: application/json
     { "idTipoPago": 1, "monto": 50000 },
     { "idTipoPago": 2, "monto": 25000 }
   ]
+}
+
+### 5. Otra reserva en el mismo quincho que se pisa (22 a 2) → 409 RN01, sugiere el Quincho 2
+###    (la del paso 3 ya tiene seña; sin seña no ocupaba la fecha: RN06)
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [2],
+  "fechaHoraInicio": "2027-04-10T22:00:00",
+  "fechaHoraFin": "2027-04-11T02:00:00"
+}
+
+### 6. Más invitados que la capacidad → 422 RN03
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [3],
+  "fechaHoraInicio": "2027-04-10T20:00:00",
+  "fechaHoraFin": "2027-04-10T23:00:00",
+  "cantidadInvitados": 300
 }
 
 ### 7. Un pago mayor al saldo → 422
@@ -75,10 +76,10 @@ GET {{api}}/reservas/2
 ### 9. Calendario de abril de 2027
 GET {{api}}/reservas?desde=2027-04-01&hasta=2027-05-01
 
-### 10. Cancelar (RN10): no se borra, pasa a Cancelada y libera el horario
+### 10. Cancelar (RN10): no se borra, pasa a Cancelada y libera el horario. El complejo se queda con la seña (RN09)
 DELETE {{api}}/reservas/2
 
-### 11. Ahora el pedido del paso 4 sí entra
+### 11. Ahora el pedido del paso 5 sí entra (le toca el id 3)
 POST {{api}}/reservas
 Content-Type: application/json
 
@@ -209,17 +210,17 @@ DELETE {{api}}/clientes/3
 ### 24. Lista de precios para afiliados
 GET {{api}}/tarifas?condicion=Afiliado
 
-### 25. Las dos tarifas del Quincho 1
-GET {{api}}/espacios/2/tarifas
+### 25. Las dos tarifas del salón
+GET {{api}}/espacios/1/tarifas
 
-### 26. Subir la tarifa de no afiliados del Quincho 1 a $180.000 → guarda la fecha de hoy
-PUT {{api}}/espacios/2/tarifas/NoAfiliado
+### 26. Subir la tarifa de afiliados del salón a $400.000 → guarda la fecha de hoy
+PUT {{api}}/espacios/1/tarifas/Afiliado
 Content-Type: application/json
 
-{ "monto": 180000 }
+{ "monto": 400000 }
 
-### 27. La reserva del paso 3 sigue valiendo $150.000: el precio quedó fijo al reservar
-GET {{api}}/reservas/2
+### 27. La reserva de ejemplo (id 1) tiene la seña pero no el total: pasa a $400.000 y el saldo a $225.000 (RN21)
+GET {{api}}/reservas/1
 
 ### 28. Quitar la tarifa de no afiliados de la cancha de pádel → 204
 DELETE {{api}}/espacios/7/tarifas/NoAfiliado
@@ -266,3 +267,42 @@ Content-Type: application/json
   "concepto": "Seña",
   "detalles": [ { "idTipoPago": 3, "monto": 60000 } ]
 }
+
+
+# ======================================================================
+#  CANCHAS, DECORACIÓN Y PRECIOS (respuestas del complejo, 23/11/2026)
+# ======================================================================
+
+### 35. Cancha de fútbol para Juan de 18 a 20 → 201 Confirmada: no lleva seña (RN20) y se cobra por hora, 2 × $50.000 (RN07)
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 2,
+  "idsEspacios": [5],
+  "fechaHoraInicio": "2027-04-12T18:00:00",
+  "fechaHoraFin": "2027-04-12T20:00:00"
+}
+
+### 36. Otra reserva de la cancha que se pisa (19 a 21) → 409 RN01, sugiere las otras canchas
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [5],
+  "fechaHoraInicio": "2027-04-12T19:00:00",
+  "fechaHoraFin": "2027-04-12T21:00:00"
+}
+
+### 37. Alargar la cancha del paso 35 (id 4) a tres horas, de 17 a 20 → el monto pasa a $150.000
+PUT {{api}}/reservas/4
+Content-Type: application/json
+
+{
+  "fechaHoraInicio": "2027-04-12T17:00:00",
+  "fechaHoraFin": "2027-04-12T20:00:00"
+}
+
+### 38. El ingreso para decorar ocupa el espacio (RN17): la mañana del evento de ejemplo, el salón no figura libre
+GET {{api}}/espacios/disponibles?inicio=2027-03-12T12:00:00&fin=2027-03-12T15:00:00&tipo=Salon

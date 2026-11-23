@@ -3,7 +3,6 @@ using AtepReservas.Api.DTOs;
 using AtepReservas.Api.Errors;
 using AtepReservas.Api.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace AtepReservas.Api.Services;
 
@@ -14,13 +13,11 @@ namespace AtepReservas.Api.Services;
 public class EspacioService
 {
     private readonly AtepDbContext _db;
-    private readonly ReglasOptions _reglas;
 
-    // Inyección de dependencias: ASP.NET crea el DbContext y la configuración y nos los pasa (ver Program.cs).
-    public EspacioService(AtepDbContext db, IOptions<ReglasOptions> reglas)
+    // Inyección de dependencias: ASP.NET crea el DbContext y nos lo pasa (ver Program.cs).
+    public EspacioService(AtepDbContext db)
     {
         _db = db;
-        _reglas = reglas.Value;
     }
 
     public async Task<List<EspacioDto>> ListarAsync(TipoEspacio? tipo, bool soloHabilitados)
@@ -87,8 +84,9 @@ public class EspacioService
                 StatusCodes.Status400BadRequest);
 
         // Esta consulta no se ejecuta sola: queda como subconsulta (NOT IN) del SELECT de abajo.
+        // Ocupan solo las reservas confirmadas (RN06), desde el ingreso para decorar (RN17).
         var idsOcupados = _db.ReservasEspacios
-            .QueOcupan(inicio, fin, _reglas.LimitePendientes(DateTime.Now))
+            .QueOcupan(inicio, fin)
             .Select(re => re.IdEspacio);
 
         IQueryable<Espacio> consulta = _db.Espacios.AsNoTracking()

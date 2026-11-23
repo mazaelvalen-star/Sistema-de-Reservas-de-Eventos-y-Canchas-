@@ -57,9 +57,9 @@ public record ReservaDetalleDto(
     string? DetalleArmado,
     EstadoReserva Estado,
     DateTime FechaRegistro,
-    DateTime? VencePendiente,   // RN06: hasta cuándo guarda el lugar sin seña (solo si está pendiente)
+    DateTime? VencePendiente,   // C12: hasta cuándo se puede dejar la seña (solo si está pendiente; no guarda el lugar, RN06)
     decimal MontoTotal,
-    decimal SeniaRequerida,     // RN15
+    decimal SeniaRequerida,     // RN15; 0 si la reserva es solo de canchas (RN20)
     decimal TotalPagado,
     decimal Saldo,
     List<ReservaEspacioDto> Espacios,

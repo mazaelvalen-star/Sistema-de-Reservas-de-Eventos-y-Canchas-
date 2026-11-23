@@ -23,7 +23,7 @@ INSERT INTO espacio (id_espacio, nombre, tipo, descripcion, capacidad, habilitad
   (7, 'Cancha de pádel',   'Cancha',  NULL,                                    8, TRUE);
 
 -- ---------------------------------------------------------------------
---  Tarifas: una por espacio y condición (S3).
+--  Tarifas: una por espacio y condición (S3). En las canchas, por hora (RN07).
 --  Único dato confirmado: salón para afiliados, $350.000 (entrevista).
 -- ---------------------------------------------------------------------
 INSERT INTO tarifa (id_tarifa, id_espacio, condicion, monto, fecha_actualizacion) VALUES
