@@ -130,7 +130,6 @@ public class ReservaService
         var reserva = new Reserva
         {
             IdCliente = cliente.IdCliente,
-            IdUsuario = _reglas.IdUsuarioProvisorio,   // con el login, sale del usuario conectado
             FechaHoraInicio = inicio,
             FechaHoraFin = fin,
             MontoTotal = tarifas.Sum(t => t.Monto),

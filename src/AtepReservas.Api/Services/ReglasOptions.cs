@@ -18,9 +18,6 @@ public class ReglasOptions
     /// </summary>
     public int HorasVencimientoPendiente { get; set; } = 72;
 
-    /// <summary>Usuario que figura como "registró la reserva" hasta que exista el login.</summary>
-    public int IdUsuarioProvisorio { get; set; } = 1;
-
     /// <summary>
     /// RN15: el porcentaje del total, nunca menos que el mínimo.
     /// SUPUESTO C2: la seña nunca supera el total. Si el mínimo es mayor que el precio, se paga todo.

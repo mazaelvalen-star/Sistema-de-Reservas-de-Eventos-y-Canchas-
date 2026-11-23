@@ -11,14 +11,6 @@ SET NAMES utf8mb4;
 USE atep_reservas;
 
 -- ---------------------------------------------------------------------
---  El único usuario: la administración del complejo.
---  Con él se registran las reservas hasta que exista el login.
---  La clave real se genera con el login (por eso no se puede entrar con este hash).
--- ---------------------------------------------------------------------
-INSERT INTO usuario (id_usuario, usuario, clave_hash, activo) VALUES
-  (1, 'admin', 'SIN-CLAVE-HASTA-EL-SPRINT-DE-LOGIN', TRUE);
-
--- ---------------------------------------------------------------------
 --  Espacios  [PRUEBA: Emiliano confirma nombres, capacidades y servicios]
 -- ---------------------------------------------------------------------
 INSERT INTO espacio (id_espacio, nombre, tipo, descripcion, capacidad, habilitado) VALUES
@@ -70,9 +62,9 @@ INSERT INTO cliente (id_cliente, id_domicilio, dni, nombre, apellido, telefono, 
 --  termina a las 4 del sábado y entran a decorar a la mañana (RN17).
 --  La seña se pagó en dos partes: efectivo y transferencia (DETALLE_PAGO).
 -- ---------------------------------------------------------------------
-INSERT INTO reserva (id_reserva, id_cliente, id_usuario, fecha_hora_inicio, fecha_hora_fin, ingreso_decoracion,
+INSERT INTO reserva (id_reserva, id_cliente, fecha_hora_inicio, fecha_hora_fin, ingreso_decoracion,
                      tipo_evento, cantidad_invitados, detalle_armado, monto_total, estado, fecha_registro) VALUES
-  (1, 1, 1, '2027-03-12 21:00:00', '2027-03-13 04:00:00', '2027-03-12 11:00:00',
+  (1, 1, '2027-03-12 21:00:00', '2027-03-13 04:00:00', '2027-03-12 11:00:00',
    'Cumpleaños de 15', 150, 'Mesas redondas de 10, mesa principal al frente',
    350000.00, 'Confirmada', '2026-11-01 10:30:00');
 

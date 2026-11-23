@@ -14,7 +14,6 @@ public class AtepDbContext : DbContext
     // Un DbSet por tabla: es lo que se consulta con LINQ (_db.Espacios.Where(...)).
     public DbSet<Domicilio> Domicilios => Set<Domicilio>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Espacio> Espacios => Set<Espacio>();
     public DbSet<Tarifa> Tarifas => Set<Tarifa>();
     public DbSet<TipoPago> TiposPago => Set<TipoPago>();
@@ -38,8 +37,6 @@ public class AtepDbContext : DbContext
         // las adivina si se llaman "Id" o "EspacioId"; nosotros usamos "IdEspacio".
         modelo.Entity<Domicilio>().HasKey(d => d.IdDomicilio);
 
-        modelo.Entity<Usuario>().HasKey(u => u.IdUsuario);
-
         modelo.Entity<Cliente>(e =>
         {
             e.HasKey(c => c.IdCliente);
@@ -61,7 +58,6 @@ public class AtepDbContext : DbContext
         {
             e.HasKey(r => r.IdReserva);
             e.HasOne(r => r.Cliente).WithMany(c => c.Reservas).HasForeignKey(r => r.IdCliente);
-            e.HasOne(r => r.Usuario).WithMany().HasForeignKey(r => r.IdUsuario);
         });
 
         modelo.Entity<ReservaEspacio>(e =>
@@ -94,9 +90,6 @@ public class AtepDbContext : DbContext
             foreach (var propiedad in entidad.GetProperties())
                 propiedad.SetColumnName(ASnakeCase(propiedad.Name));
         }
-
-        // La única excepción a la regla (va después del foreach para pisar el nombre automático).
-        modelo.Entity<Usuario>().Property(u => u.NombreUsuario).HasColumnName("usuario");
     }
 
     private static string ASnakeCase(string nombre)

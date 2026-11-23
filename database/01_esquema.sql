@@ -1,11 +1,11 @@
 -- =====================================================================
 --  Sistema de reservas del Complejo ATEP · Grupo N.º 5
---  01_esquema.sql — crea la base de datos y las 10 tablas del DER v5
+--  01_esquema.sql — crea la base de datos y las 9 tablas del DER v5
 --
 --  Fuente: "DER Complejo ATEP", versión 5 (23/11/2026) del grupo.
---  La v5 saca EMPLEADO, PERFIL y PERMISO: el 20/11/2026 el complejo
---  confirmó que no hay sitio web y que el sistema lo usa una sola persona
---  de la administración, en una computadora.
+--  La v5 saca EMPLEADO y el acceso al sistema (USUARIO, PERFIL y PERMISO):
+--  el 20/11/2026 el complejo confirmó que no hay sitio web y que el sistema
+--  lo usa una sola persona de la administración, en una computadora.
 --  Las marcas SUPUESTO S2 a S6 son los supuestos del DER que falta
 --  confirmar con el complejo. Están explicados en docs/supuestos.md.
 --  Requiere MySQL 8.0.16 o superior: desde esa versión MySQL respeta
@@ -23,19 +23,6 @@ CREATE DATABASE atep_reservas
   CHARACTER SET utf8mb4            -- acepta tildes, ñ y emojis
   COLLATE utf8mb4_0900_ai_ci;      -- compara sin distinguir mayúsculas ni tildes
 USE atep_reservas;
-
--- ---------------------------------------------------------------------
---  Acceso al sistema: USUARIO
---  Lo usa una sola persona de la administración: no hay perfiles ni permisos.
--- ---------------------------------------------------------------------
-CREATE TABLE usuario (
-  id_usuario  INT           NOT NULL AUTO_INCREMENT,
-  usuario     VARCHAR(50)   NOT NULL,     -- el nombre con el que entra
-  clave_hash  VARCHAR(255)  NOT NULL,     -- nunca la clave en texto plano
-  activo      BOOLEAN       NOT NULL DEFAULT TRUE,
-  CONSTRAINT pk_usuario          PRIMARY KEY (id_usuario),
-  CONSTRAINT uq_usuario_usuario  UNIQUE (usuario)
-);
 
 -- ---------------------------------------------------------------------
 --  Clientes: DOMICILIO y CLIENTE
@@ -120,7 +107,6 @@ CREATE TABLE tipo_pago (
 CREATE TABLE reserva (
   id_reserva          INT            NOT NULL AUTO_INCREMENT,
   id_cliente          INT            NOT NULL,
-  id_usuario          INT            NOT NULL,   -- quién la registró
   fecha_hora_inicio   DATETIME       NOT NULL,   -- SUPUESTO S2: horario libre. Fecha y hora juntas,
   fecha_hora_fin      DATETIME       NOT NULL,   -- porque un evento puede terminar a las 4 del día siguiente
   ingreso_decoracion  DATETIME       NULL,       -- RN17
@@ -132,7 +118,6 @@ CREATE TABLE reserva (
   fecha_registro      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pk_reserva             PRIMARY KEY (id_reserva),
   CONSTRAINT fk_reserva_cliente     FOREIGN KEY (id_cliente) REFERENCES cliente (id_cliente),
-  CONSTRAINT fk_reserva_usuario     FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
   CONSTRAINT ck_reserva_horario     CHECK (fecha_hora_fin > fecha_hora_inicio),
   CONSTRAINT ck_reserva_decoracion  CHECK (ingreso_decoracion IS NULL OR ingreso_decoracion <= fecha_hora_inicio),
   CONSTRAINT ck_reserva_invitados   CHECK (cantidad_invitados IS NULL OR cantidad_invitados > 0),
