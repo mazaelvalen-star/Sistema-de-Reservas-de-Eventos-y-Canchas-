@@ -7,8 +7,8 @@ Cómo leer las tablas:
 
 - **Obligatorio:** «Sí» significa que la columna no acepta valores vacíos (`NOT NULL`).
 - **Clave:** PK es la clave primaria, FK una clave foránea (con la tabla a la que apunta) y UQ un valor que no se repite.
-- Los códigos RN son reglas de negocio y los S son supuestos del modelo. Los que siguen sin confirmar están en
-  [supuestos.md](supuestos.md).
+- Los códigos RN son reglas de negocio, los S son supuestos del modelo y los C, supuestos del código. Los que
+  siguen sin confirmar están en [supuestos.md](supuestos.md).
 
 Todas las claves primarias son números que MySQL asigna automáticamente (`AUTO_INCREMENT`), y los importes son
 `DECIMAL(12,2)`, que guarda los centavos sin errores de redondeo.
@@ -21,7 +21,7 @@ Lo que el complejo alquila: el salón, los quinchos, la cantina y las canchas.
 | --- | --- | --- | --- | --- |
 | `id_espacio` | INT | Sí | PK | Identificador del espacio. |
 | `nombre` | VARCHAR(60) | Sí | UQ | Nombre con el que se lo conoce, por ejemplo «Quincho 1». No se repite. |
-| `tipo` | VARCHAR(20) | Sí | — | Salon, Quincho, Cantina o Cancha. |
+| `tipo` | VARCHAR(20) | Sí | — | Salon, Quincho, Cantina o Cancha. Las canchas se cobran por hora y no llevan seña (RN07, RN20). |
 | `descripcion` | VARCHAR(300) | No | — | Servicios incluidos en el alquiler. |
 | `capacidad` | INT | Sí | — | Cantidad máxima de personas (RN03). |
 | `habilitado` | BOOLEAN | Sí | — | FALSE = dado de baja: no se puede reservar, pero conserva su historial. Por defecto, TRUE. |
@@ -33,14 +33,16 @@ Además:
 
 ## tarifa
 
-El precio de cada espacio para afiliados y para no afiliados. Hay una sola fila por espacio y condición (S3).
+El precio de cada espacio para afiliados y para no afiliados. Hay una sola fila por espacio y condición, porque
+el precio no cambia por día ni por horario (S3, confirmado). Cuando cambia, las reservas que todavía no están
+pagadas del todo pasan al precio nuevo (RN21).
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
 | `id_tarifa` | INT | Sí | PK | Identificador de la tarifa. |
 | `id_espacio` | INT | Sí | FK → espacio, UQ compuesta | Espacio al que corresponde el precio. |
 | `condicion` | VARCHAR(20) | Sí | UQ compuesta | Afiliado o NoAfiliado. |
-| `monto` | DECIMAL(12,2) | Sí | — | Precio del espacio para esa condición, en pesos. |
+| `monto` | DECIMAL(12,2) | Sí | — | Precio del espacio para esa condición, en pesos: por evento, o por hora en las canchas (RN07). |
 | `fecha_actualizacion` | DATE | Sí | — | Día del último cambio de precio. |
 
 Además:
@@ -94,13 +96,13 @@ El centro del modelo: une al cliente con los espacios, el horario y los pagos.
 | `id_cliente` | INT | Sí | FK → cliente | Titular de la reserva. |
 | `fecha_hora_inicio` | DATETIME | Sí | — | Cuándo empieza el evento. |
 | `fecha_hora_fin` | DATETIME | Sí | — | Cuándo termina. Puede ser del día siguiente: los eventos terminan a las 4:00. |
-| `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar (RN17). |
+| `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar. El espacio queda ocupado desde esa hora (RN17). |
 | `tipo_evento` | VARCHAR(60) | No | — | Cumpleaños, casamiento, partido... |
 | `cantidad_invitados` | INT | No | — | Invitados que informa el cliente (RN16). No puede superar la capacidad (RN03). |
 | `detalle_armado` | VARCHAR(500) | No | — | Cómo quiere las mesas y las sillas (RN16). |
-| `monto_total` | DECIMAL(12,2) | Sí | — | Suma de las tarifas de sus espacios al momento de reservar. No cambia si después cambian los precios (RN07). |
-| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05, RN06 y RN10). Por defecto, Pendiente. |
-| `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Desde acá se cuenta el plazo para dejar la seña (RN06). Por defecto, el momento en que se guarda. |
+| `monto_total` | DECIMAL(12,2) | Sí | — | Suma de las tarifas de sus espacios: las canchas por hora y los demás por evento (RN07). Sigue la tarifa vigente hasta que la reserva se paga del todo (RN21). |
+| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05 y RN10). Solo una confirmada ocupa el espacio: una pendiente espera la seña (RN06), y una reserva solo de canchas nace confirmada (RN20). Por defecto, Pendiente. |
+| `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Desde acá se cuentan las horas para dejar la seña antes de que la reserva venza (C12). Por defecto, el momento en que se guarda. |
 
 Además:
 

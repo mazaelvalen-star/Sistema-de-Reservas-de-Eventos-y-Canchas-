@@ -102,3 +102,37 @@ una sola persona de la administración, en una computadora.
   canchas y los precios (S2, S3 y S5), que pueden cambiar tablas.
 - Reemplazar los datos de prueba por los reales del complejo.
 - Cerrar el alcance: pantallas y WhatsApp (A1 y A2).
+
+## Respuestas del complejo · 23/11/2026
+
+**Objetivo.** Aplicar lo que respondió Emiliano Lopez a las preguntas de `supuestos.md`.
+
+**Hecho** (Matías Amarilla)
+
+- Las canchas se cobran por hora y no llevan seña: una reserva solo de canchas queda confirmada al
+  registrarla (RN07, RN20).
+- Sin seña no se reserva la fecha: una reserva pendiente ya no ocupa el espacio, y el pago que completa
+  la seña vuelve a controlar que el horario siga libre (RN06).
+- El ingreso para decorar ocupa el espacio desde esa hora (RN17).
+- El precio de una reserva sigue la tarifa vigente hasta que se paga del todo: al cambiar una tarifa se
+  recalculan las reservas que no están pagadas (RN21).
+- Al cancelar, el complejo se queda con la seña (RN09).
+- La base no cambió de estructura, solo sus comentarios: el DER sigue siendo el v5, con las notas al día.
+- Pruebas: 98 casos automáticos (eran 87). MAN-01 ahora prueba que una pendiente vencida ya no acepta
+  pagos.
+- Documentación: supuestos, requisitos, diccionario de datos, los README y el archivo `.http`.
+
+**Decisiones**
+
+- Se confirman S2 y S3, y se descartan RN13, S5, C2 y C4. RN09 pasa de candidata a regla.
+- En la respuesta sobre el precio, «si no cancelaste» se entendió como «si no pagaste el total», que es
+  lo que significa cancelar una deuda. En el sistema, cancelar sigue siendo dar de baja una reserva.
+- El vencimiento de las pendientes queda solo como limpieza, a las 72 horas (C12).
+- Aparecieron cinco supuestos del código, C9 a C13.
+
+**Quedó pendiente**
+
+- Los turnos fijos de las canchas (RN22, RF23): falta saber cómo funcionan.
+- Pasar al sistema las reservas que ya tiene el complejo: falta saber si también las que ya pasaron (C5).
+- Las preguntas nuevas de `supuestos.md`, la de WhatsApp incluida (A2).
+- Reemplazar los datos de prueba por los reales del complejo.
