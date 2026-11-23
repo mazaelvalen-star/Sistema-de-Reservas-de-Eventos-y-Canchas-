@@ -11,31 +11,12 @@ SET NAMES utf8mb4;
 USE atep_reservas;
 
 -- ---------------------------------------------------------------------
---  Perfiles y permisos (tabla "Perfiles propuestos" del DER v4)
---  Un perfil puede usar un permiso si su jerarquía es igual o más alta
---  (número menor o igual) que la del perfil mínimo del permiso.
+--  El único usuario: la administración del complejo.
+--  Con él se registran las reservas hasta que exista el login.
+--  La clave real se genera con el login (por eso no se puede entrar con este hash).
 -- ---------------------------------------------------------------------
-INSERT INTO perfil (id_perfil, nombre, jerarquia, descripcion) VALUES
-  (1, 'Jefe del complejo',     1, 'Modifica tarifas, autoriza excepciones y gestiona usuarios'),
-  (2, 'Administrativo',        2, 'Gestiona reservas, clientes y pagos'),
-  (3, 'Personal del complejo', 3, 'Consulta el calendario y el armado de los eventos'),
-  (4, 'Cliente',               4, 'Reserva desde el sitio web y ve sus reservas');
-
-INSERT INTO permiso (id_permiso, id_perfil_minimo, codigo, descripcion) VALUES
-  (1, 1, 'TARIFAS_MODIFICAR',     'Modificar tarifas (RN12)'),
-  (2, 1, 'EXCEPCIONES_AUTORIZAR', 'Autorizar descuentos y cambios fuera de plazo (RN12)'),
-  (3, 1, 'USUARIOS_GESTIONAR',    'Gestionar usuarios y perfiles'),
-  (4, 2, 'RESERVAS_GESTIONAR',    'Registrar, modificar y cancelar reservas de cualquier cliente'),
-  (5, 2, 'CLIENTES_GESTIONAR',    'Registrar y modificar clientes'),
-  (6, 2, 'PAGOS_REGISTRAR',       'Registrar pagos de seña y saldo'),
-  (7, 2, 'TARIFAS_CONSULTAR',     'Consultar tarifas'),
-  (8, 3, 'CALENDARIO_CONSULTAR',  'Consultar el calendario y el armado de cada evento'),
-  (9, 4, 'RESERVAS_PROPIAS',      'Reservar desde el sitio web y ver las reservas propias (RN18, RN19)');
-
--- Usuario con el que se registran las reservas hasta que exista el login.
--- La clave real se genera en el sprint de usuarios (por eso no se puede entrar con este hash).
-INSERT INTO usuario (id_usuario, id_perfil, usuario, clave_hash, activo) VALUES
-  (1, 1, 'admin', 'SIN-CLAVE-HASTA-EL-SPRINT-DE-LOGIN', TRUE);
+INSERT INTO usuario (id_usuario, usuario, clave_hash, activo) VALUES
+  (1, 'admin', 'SIN-CLAVE-HASTA-EL-SPRINT-DE-LOGIN', TRUE);
 
 -- ---------------------------------------------------------------------
 --  Espacios  [PRUEBA: Emiliano confirma nombres, capacidades y servicios]
@@ -80,9 +61,9 @@ INSERT INTO domicilio (id_domicilio, calle, numero, piso_depto, barrio, localida
   (1, 'Av. Siempre Viva', '742', NULL,   'Centro',      'San Miguel de Tucumán', '4000'),
   (2, 'Calle Falsa',      '123', '2° B', 'Barrio Norte', 'Yerba Buena',           '4107');
 
-INSERT INTO cliente (id_cliente, id_domicilio, id_usuario, dni, nombre, apellido, telefono, email, es_afiliado, nro_afiliado) VALUES
-  (1, 1, NULL, '30111222', 'María', 'Gómez', '381-555-0001', 'maria.gomez@ejemplo.com', TRUE,  'AF-10234'),
-  (2, 2, NULL, '35222333', 'Juan',  'Pérez', '381-555-0002', NULL,                      FALSE, NULL);
+INSERT INTO cliente (id_cliente, id_domicilio, dni, nombre, apellido, telefono, email, es_afiliado, nro_afiliado) VALUES
+  (1, 1, '30111222', 'María', 'Gómez', '381-555-0001', 'maria.gomez@ejemplo.com', TRUE,  'AF-10234'),
+  (2, 2, '35222333', 'Juan',  'Pérez', '381-555-0002', NULL,                      FALSE, NULL);
 
 -- ---------------------------------------------------------------------
 --  Una reserva confirmada de ejemplo: cumpleaños de 15 un viernes,

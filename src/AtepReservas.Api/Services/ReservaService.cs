@@ -135,7 +135,6 @@ public class ReservaService
             FechaHoraFin = fin,
             MontoTotal = tarifas.Sum(t => t.Monto),
             // RN05: toda reserva nace pendiente y la confirma el pago de la seña.
-            // SUPUESTO RN18: va a valer igual para las que cargue el cliente desde la web.
             Estado = EstadoReserva.Pendiente,
             FechaRegistro = ahora,                      // desde acá se cuenta el plazo de la seña (RN06)
         };

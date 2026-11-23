@@ -1,9 +1,12 @@
 -- =====================================================================
 --  Sistema de reservas del Complejo ATEP · Grupo N.º 5
---  01_esquema.sql — crea la base de datos y las 13 tablas del DER v4
+--  01_esquema.sql — crea la base de datos y las 10 tablas del DER v5
 --
---  Fuente: "DER Complejo ATEP", versión 4 (02/11/2026) del grupo.
---  Las marcas SUPUESTO S2 a S7 son los supuestos del DER que falta
+--  Fuente: "DER Complejo ATEP", versión 5 (23/11/2026) del grupo.
+--  La v5 saca EMPLEADO, PERFIL y PERMISO: el 20/11/2026 el complejo
+--  confirmó que no hay sitio web y que el sistema lo usa una sola persona
+--  de la administración, en una computadora.
+--  Las marcas SUPUESTO S2 a S6 son los supuestos del DER que falta
 --  confirmar con el complejo. Están explicados en docs/supuestos.md.
 --  Requiere MySQL 8.0.16 o superior: desde esa versión MySQL respeta
 --  las restricciones CHECK (antes las ignoraba sin avisar).
@@ -22,48 +25,23 @@ CREATE DATABASE atep_reservas
 USE atep_reservas;
 
 -- ---------------------------------------------------------------------
---  Acceso al sistema: PERFIL, PERMISO y USUARIO
---  SUPUESTO S7: los perfiles son escalonados. Cada permiso guarda el perfil
---  mínimo que lo tiene, y los perfiles de más jerarquía también lo tienen.
+--  Acceso al sistema: USUARIO
+--  Lo usa una sola persona de la administración: no hay perfiles ni permisos.
 -- ---------------------------------------------------------------------
-CREATE TABLE perfil (
-  id_perfil    INT           NOT NULL AUTO_INCREMENT,
-  nombre       VARCHAR(50)   NOT NULL,
-  jerarquia    INT           NOT NULL,   -- 1 = la más alta (Jefe del complejo)
-  descripcion  VARCHAR(200)  NULL,
-  CONSTRAINT pk_perfil            PRIMARY KEY (id_perfil),
-  CONSTRAINT uq_perfil_nombre     UNIQUE (nombre),
-  -- Escalonados: dos perfiles no pueden estar en el mismo escalón.
-  CONSTRAINT uq_perfil_jerarquia  UNIQUE (jerarquia),
-  CONSTRAINT ck_perfil_jerarquia  CHECK (jerarquia > 0)
-);
-
-CREATE TABLE permiso (
-  id_permiso        INT           NOT NULL AUTO_INCREMENT,
-  id_perfil_minimo  INT           NOT NULL,
-  codigo            VARCHAR(50)   NOT NULL,   -- lo que consulta el código, ej. PAGOS_REGISTRAR
-  descripcion       VARCHAR(150)  NOT NULL,
-  CONSTRAINT pk_permiso                PRIMARY KEY (id_permiso),
-  CONSTRAINT uq_permiso_codigo         UNIQUE (codigo),
-  CONSTRAINT fk_permiso_perfil_minimo  FOREIGN KEY (id_perfil_minimo) REFERENCES perfil (id_perfil)
-);
-
 CREATE TABLE usuario (
   id_usuario  INT           NOT NULL AUTO_INCREMENT,
-  id_perfil   INT           NOT NULL,     -- cada usuario tiene un solo perfil
   usuario     VARCHAR(50)   NOT NULL,     -- el nombre con el que entra
   clave_hash  VARCHAR(255)  NOT NULL,     -- nunca la clave en texto plano
   activo      BOOLEAN       NOT NULL DEFAULT TRUE,
   CONSTRAINT pk_usuario          PRIMARY KEY (id_usuario),
-  CONSTRAINT uq_usuario_usuario  UNIQUE (usuario),
-  -- Sin ON DELETE: MySQL usa RESTRICT y no deja borrar un perfil con usuarios.
-  CONSTRAINT fk_usuario_perfil   FOREIGN KEY (id_perfil) REFERENCES perfil (id_perfil)
+  CONSTRAINT uq_usuario_usuario  UNIQUE (usuario)
 );
 
 -- ---------------------------------------------------------------------
---  Personas: DOMICILIO, CLIENTE y EMPLEADO
---  SUPUESTO S6: cada cliente y cada empleado tienen un solo domicilio, y
---  un domicilio es de una sola persona.
+--  Clientes: DOMICILIO y CLIENTE
+--  Los clientes no usan el sistema: los carga la administración.
+--  SUPUESTO S6: cada cliente tiene un solo domicilio, y un domicilio es de
+--  un solo cliente.
 -- ---------------------------------------------------------------------
 CREATE TABLE domicilio (
   id_domicilio   INT          NOT NULL AUTO_INCREMENT,
@@ -79,7 +57,6 @@ CREATE TABLE domicilio (
 CREATE TABLE cliente (
   id_cliente    INT           NOT NULL AUTO_INCREMENT,
   id_domicilio  INT           NOT NULL,
-  id_usuario    INT           NULL,           -- NULL = el cliente no tiene cuenta en la web
   dni           VARCHAR(10)   NOT NULL,       -- texto: es un identificador, no se hacen cuentas
   nombre        VARCHAR(60)   NOT NULL,
   apellido      VARCHAR(60)   NOT NULL,
@@ -92,33 +69,10 @@ CREATE TABLE cliente (
   CONSTRAINT uq_cliente_dni        UNIQUE (dni),
   -- UNIQUE sobre la FK = relación uno a uno: un domicilio no se comparte (S6).
   CONSTRAINT uq_cliente_domicilio  UNIQUE (id_domicilio),
-  -- UNIQUE sobre una columna que acepta NULL: muchos clientes sin usuario,
-  -- pero un usuario no puede ser de dos clientes (el "cero o uno" del DER).
-  CONSTRAINT uq_cliente_usuario    UNIQUE (id_usuario),
   CONSTRAINT fk_cliente_domicilio  FOREIGN KEY (id_domicilio) REFERENCES domicilio (id_domicilio),
-  CONSTRAINT fk_cliente_usuario    FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
   CONSTRAINT ck_cliente_dni        CHECK (dni REGEXP '^[0-9]{7,8}$'),
   -- RN08: la tarifa de afiliado exige registrar el número de afiliado.
   CONSTRAINT ck_cliente_afiliado   CHECK (es_afiliado = FALSE OR nro_afiliado IS NOT NULL)
-);
-
-CREATE TABLE empleado (
-  id_empleado   INT          NOT NULL AUTO_INCREMENT,
-  id_domicilio  INT          NOT NULL,
-  id_usuario    INT          NULL,        -- NULL = no usa el sistema
-  dni           VARCHAR(10)  NOT NULL,
-  nombre        VARCHAR(60)  NOT NULL,
-  apellido      VARCHAR(60)  NOT NULL,
-  telefono      VARCHAR(25)  NULL,
-  cargo         VARCHAR(60)  NOT NULL,
-  activo        BOOLEAN      NOT NULL DEFAULT TRUE,
-  CONSTRAINT pk_empleado            PRIMARY KEY (id_empleado),
-  CONSTRAINT uq_empleado_dni        UNIQUE (dni),
-  CONSTRAINT uq_empleado_domicilio  UNIQUE (id_domicilio),
-  CONSTRAINT uq_empleado_usuario    UNIQUE (id_usuario),
-  CONSTRAINT fk_empleado_domicilio  FOREIGN KEY (id_domicilio) REFERENCES domicilio (id_domicilio),
-  CONSTRAINT fk_empleado_usuario    FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
-  CONSTRAINT ck_empleado_dni        CHECK (dni REGEXP '^[0-9]{7,8}$')
 );
 
 -- ---------------------------------------------------------------------

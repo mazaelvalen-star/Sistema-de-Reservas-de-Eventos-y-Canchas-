@@ -51,8 +51,8 @@ public class TarifaService
     /// </summary>
     public async Task<TarifaDto> GuardarAsync(int idEspacio, CondicionTarifaria condicion, decimal monto)
     {
-        // SUPUESTO RN12: solo el jefe del complejo puede cambiar tarifas. Todavía no se controla:
-        // el permiso TARIFAS_MODIFICAR se va a exigir acá cuando exista el login (Sprint 3).
+        // RN12: los precios los define el jefe del complejo, pero el sistema no lo controla:
+        // lo usa una sola persona de la administración, que carga lo que el jefe decide.
         var espacio = await BuscarEspacioAsync(idEspacio);
 
         var tarifa = await _db.Tarifas

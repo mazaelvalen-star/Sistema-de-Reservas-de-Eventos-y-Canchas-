@@ -1,9 +1,9 @@
 -- =====================================================================
 --  restricciones.sql — pruebas de las restricciones de la base (MAN-02)
 --
---  Intenta guardar o borrar 20 cosas que la base NO debe permitir y
+--  Intenta guardar o borrar 17 cosas que la base NO debe permitir y
 --  muestra una tabla con el resultado de cada intento. La prueba sale
---  bien si los 20 casos dicen "OK: rechazado".
+--  bien si los 17 casos dicen "OK: rechazado".
 --
 --  Cómo correrlo, con la base recién creada:
 --    Workbench:  File > Open SQL Script, y el rayo.
@@ -68,13 +68,10 @@ BEGIN
   INSERT INTO cliente (id_domicilio, dni, nombre, apellido, telefono) VALUES (@dom, '12AB34', 'X', 'Y', '1');
   CALL anotar_caso('R05', 'DNI con letras (ck_cliente_dni)');
 
-  INSERT INTO perfil (nombre, jerarquia) VALUES ('Cajero', 2);
-  CALL anotar_caso('R06', 'Dos perfiles en el mismo escalón, S7 (uq_perfil_jerarquia)');
+  -- R06 y R07 probaban perfiles y permisos, que se quitaron en el DER v5.
+  -- Los códigos no se reutilizan, para que cada caso se siga pudiendo rastrear.
 
-  INSERT INTO permiso (id_perfil_minimo, codigo, descripcion) VALUES (99, 'PRUEBA', 'x');
-  CALL anotar_caso('R07', 'Permiso con un perfil mínimo que no existe (fk_permiso_perfil_minimo)');
-
-  INSERT INTO usuario (id_perfil, usuario, clave_hash) VALUES (2, 'admin', 'x');
+  INSERT INTO usuario (usuario, clave_hash) VALUES ('admin', 'x');
   CALL anotar_caso('R08', 'Nombre de usuario repetido (uq_usuario_usuario)');
 
   INSERT INTO tarifa (id_espacio, condicion, monto, fecha_actualizacion) VALUES (1, 'Afiliado', 1000, '2026-11-01');
@@ -109,8 +106,7 @@ BEGIN
   DELETE FROM reserva WHERE id_reserva = 1;
   CALL anotar_caso('R18', 'Borrar una reserva que tiene pagos (fk_pago_reserva)');
 
-  DELETE FROM perfil WHERE id_perfil = 2;
-  CALL anotar_caso('R19', 'Borrar un perfil que es el mínimo de algún permiso (fk_permiso_perfil_minimo)');
+  -- R19 probaba borrar un perfil; se quitó con los perfiles en el DER v5.
 
   DELETE FROM tipo_pago WHERE id_tipo_pago = 2;
   CALL anotar_caso('R20', 'Borrar un medio de pago que ya se usó (fk_dp_tipo_pago)');

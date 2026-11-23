@@ -1,6 +1,6 @@
 namespace AtepReservas.Api.Models;
 
-/// <summary>Dirección de un cliente o de un empleado. Es de una sola persona (S6).</summary>
+/// <summary>Dirección de un cliente. Es de un solo cliente (S6).</summary>
 public class Domicilio
 {
     public int IdDomicilio { get; set; }
