@@ -3,7 +3,7 @@
 | Prueba | Qué verifica | Dónde está |
 | --- | --- | --- |
 | Automáticas de la API | 87 casos que recorren cada requisito y cada regla de negocio por HTTP. | `PruebasApi/` |
-| Restricciones de la base (MAN-02) | 20 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
+| Restricciones de la base (MAN-02) | 16 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
 | Vencimiento de reservas (MAN-01) | Que una reserva pendiente sin seña vence y libera su horario (RN06). | Se hace a mano, más abajo. |
 
 Todas arrancan con **la base recién creada**: los casos dependen de los datos iniciales (los clientes
@@ -218,9 +218,12 @@ Con la base recién creada, corré el script desde Workbench o desde la consola:
 mysql -u root -p --table -e "source tests/restricciones.sql"
 ```
 
-Muestra una tabla con los 20 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
-`20 de 20 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
+Muestra una tabla con los 16 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
+`16 de 16 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
 verse mal; en Workbench se ven bien.
+
+Los códigos van de R01 a R20 con saltos: R06, R07, R08 y R19 probaban perfiles, permisos y usuarios,
+que se quitaron con el DER v5. Los códigos no se reutilizan.
 
 El script no deja nada guardado, pero después hay que recrear la base: los intentos fallidos hacen
 avanzar los id automáticos.
@@ -231,4 +234,4 @@ Anotá cada corrida completa, sobre todo antes de una entrega.
 
 | Fecha | Quién | Automáticas | MAN-01 | MAN-02 | Observaciones |
 | --- | --- | --- | --- | --- | --- |
-|  |  | de 87 |  | de 20 |  |
+|  |  | de 87 |  | de 16 |  |

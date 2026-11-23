@@ -1,11 +1,13 @@
 # Supuestos sin confirmar
 
-El sistema está programado como si todo lo de esta página estuviera confirmado, pero todavía no se
-validó con el complejo. Cada fila dice qué hace hoy el sistema y dónde se cambia si el complejo
-responde otra cosa.
+El sistema está programado como si todos los supuestos de esta página estuvieran confirmados, pero
+todavía no se validaron con el complejo. Cada fila dice qué hace hoy el sistema y dónde se cambia si el
+complejo responde otra cosa.
 
 Lo que sí confirmó el complejo en la entrevista del 16/10/2026 son las reglas RN01, RN05, RN08, RN15,
-RN16 y RN17.
+RN16 y RN17. El 20/11/2026 confirmó además que no hay sitio web: el sistema lo usa una sola persona de
+la administración, en una computadora. Ese cambio y lo que quedó sin efecto por él están al final, en
+[Confirmados](#confirmados) y [Descartados](#descartados).
 
 ## Cómo se usa
 
@@ -15,6 +17,8 @@ RN16 y RN17.
   `SUPUESTO` en el código.
 - **Cuando el complejo dice otra cosa**, cambialo donde indica la tabla, ajustá su caso de prueba y
   anotalo en la [bitácora](bitacora.md).
+- **Cuando la respuesta lo deja sin efecto**, pasalo a [Descartados](#descartados) con el motivo. Los
+  códigos no se reutilizan.
 
 La columna **Costo** dice cuánto trabajo es cambiarlo:
 
@@ -33,13 +37,10 @@ Son las reglas que en el relevamiento figuran como «Pendiente».
 | RN07 | El monto de la reserva es la suma de la tarifa de cada espacio, según el cliente sea afiliado o no. | `ReservaService.CrearAsync` | Depende de S3 y de C4. | Medio |
 | RN10 | Cancelar no borra la reserva: pasa a `Cancelada` y libera el horario. | `ReservaService.CancelarAsync` | Si hubiera que borrarlas, se borran también sus pagos y se pierde el historial. | Medio |
 | RN11 | No deja eliminar un cliente que tiene reservas. | `ClienteService.EliminarAsync` y la clave foránea `fk_reserva_cliente` | Se agrega una baja lógica del cliente, con una columna `activo`. | Alto |
-| RN12 | **Todavía no se aplica:** cualquiera puede cambiar una tarifa. Cuando exista el login se va a exigir el permiso `TARIFAS_MODIFICAR`, que hoy tiene solo el Jefe del complejo. | `TarifaService.GuardarAsync` | Se cambia el perfil mínimo de ese permiso en la tabla `permiso`. | Bajo |
-| RN18 | Toda reserva nace `Pendiente` y la confirma el pago de la seña. Las que cargue el cliente desde la web van a seguir la misma regla. | `ReservaService.CrearAsync` | Si las reservas web necesitan otra aprobación, se agrega un estado. | Medio |
-| RN19 | **Todavía no se aplica:** no hay login. Los perfiles y permisos propuestos ya están cargados en la base. | `02_datos_iniciales.sql`, tablas `perfil` y `permiso` | Se cambian los perfiles o sus permisos, que son datos. Si un perfil no entra en la escalera, ver S7. | Bajo |
 
 ## Supuestos del modelo de datos
 
-Vienen del DER v4, con el mismo código.
+Vienen del DER, con el mismo código. S1 quedó resuelto en la v2, y S7 se descartó en la v5.
 
 | Código | Qué hace hoy el sistema | Dónde está | Si el complejo dice otra cosa | Costo |
 | --- | --- | --- | --- | --- |
@@ -47,8 +48,7 @@ Vienen del DER v4, con el mismo código.
 | S3 | Hay un solo precio por espacio y condición. Al cambiarlo se pisa el anterior y se anota la fecha. | Tabla `tarifa` (`uq_tarifa_espacio_condicion`); `TarifaService` | Si el precio cambia por día, turno o temporada, o si las canchas se cobran por hora, TARIFA suma columnas y cambia el cálculo del monto. | Alto |
 | S4 | La afiliación es un dato del cliente. No se controla su vencimiento ni el grupo familiar. | Tabla `cliente`, columnas `es_afiliado` y `nro_afiliado` | Pasa a una tabla AFILIACION con su vigencia. | Alto |
 | S5 | Las canchas se reservan igual que los demás espacios, con fecha y horario. No hay turnos fijos semanales. | Columna `espacio.tipo` | Con turnos fijos semanales hay que modelar reservas que se repiten. | Alto |
-| S6 | Cada cliente y cada empleado tienen un solo domicilio, y no lo comparten con nadie. | Tabla `domicilio`; `ClienteService.CrearAsync` | Si hace falta más de uno por persona, la clave foránea pasa a DOMICILIO. | Alto |
-| S7 | Los perfiles son escalonados: cada uno puede hacer todo lo de los perfiles de menor jerarquía. | Columna `permiso.id_perfil_minimo` | Si aparece un perfil que no entra en la escalera, vuelve la tabla intermedia PERFIL_PERMISO. | Alto |
+| S6 | Cada cliente tiene un solo domicilio, y no lo comparte con nadie. | Tabla `domicilio`; `ClienteService.CrearAsync` | Si hace falta más de uno por cliente, la clave foránea pasa a DOMICILIO. | Alto |
 
 ## Supuestos del código
 
@@ -84,13 +84,20 @@ confirma alguna, hay que programarla.
 | --- | --- | --- | --- |
 | A1 | El sistema se demuestra con la API: Swagger y las pruebas automáticas. No hay pantallas. | El objetivo 1 y la etapa 2 del cronograma hablan de una interfaz. | Alto: hay que construir el frontend. |
 | A2 | La comunicación por WhatsApp queda para una versión futura. | Figura como entregable 5 y como etapa 8 del cronograma. | Alto |
+| A3 | No hay login: el sistema lo usa una sola persona de la administración, en una computadora. | El módulo Inicio dice «Acceder al sistema», sin hablar de usuario ni clave. | Medio: revertir el commit «Saca el login: el sistema lo usa una sola persona» devuelve la tabla `usuario`, sin perfiles; después falta programar el inicio de sesión. |
 
 A1 se apoya en la Guía de Trabajo N.º 1 de Programación IV: para esa materia el alcance se arma
 pensando en una API REST, que es donde se muestran las funciones (Actividad 5, «Alcance y límites»).
 Las interfaces quedan fuera de la primera etapa según la misma guía, así que una guía posterior u
 otra materia del integrador podría pedirlas. Esa pregunta es para la docente, no para el complejo.
+Desde el 20/11/2026 se sabe que, si hay pantallas, son para la administración en esa computadora:
+no hace falta un sitio web.
 
-Cuando estos dos puntos se cierren, hay que actualizar el README principal para que diga lo mismo.
+A3 sale de la misma guía: según la Actividad 6, en esta etapa no hace falta implementar autenticación,
+y si el proyecto tiene un solo usuario real, se justifica sin inventar actores. Si otra materia del
+integrador pide login, es otra pregunta para la docente.
+
+Cuando estos puntos se cierren, hay que actualizar el README principal para que diga lo mismo.
 
 ## Datos de prueba
 
@@ -101,8 +108,6 @@ marcada `[PRUEBA]`:
 - Trece de las catorce tarifas. La única real es la del salón para afiliados, $350.000.
 - Los medios de pago: Efectivo y Transferencia.
 - Los dos clientes y la reserva de ejemplo.
-
-Los perfiles y sus permisos son la propuesta del equipo, que tampoco está validada.
 
 ## Para preguntar cuando se pueda
 
@@ -117,10 +122,23 @@ Van primero las respuestas más caras de cambiar después:
 7. ¿El precio se congela con la seña o al reservar? (C4)
 8. ¿El gremio bloquea fechas para actividades propias? (RN13)
 9. ¿Hay que pasar al sistema las reservas que ya están anotadas en el cuaderno? (C5)
+10. ¿Sigue en pie la atención por WhatsApp? También estaba pensada para los clientes. (A2)
 
 ## Confirmados
 
-Todavía ninguno. Al confirmar un supuesto, se mueve acá.
+Al confirmar un supuesto, se mueve acá.
 
 | Código | Fecha | Quién lo confirmó | Qué se cambió en el sistema |
 | --- | --- | --- | --- |
+| Sitio web | 20/11/2026 | Emiliano Lopez, desde el complejo | No hay sitio web: el sistema lo usa una sola persona de la administración, en una computadora. Se quitaron las tablas `usuario`, `perfil`, `permiso` y `empleado` (DER v5) y el login (A3). Lo que quedó sin efecto está en [Descartados](#descartados). |
+
+## Descartados
+
+Quedaron sin efecto por lo que confirmó el complejo. Los códigos no se reutilizan.
+
+| Código | Qué decía | Por qué se descartó | Fecha |
+| --- | --- | --- | --- |
+| RN12 | Solo el jefe del complejo modifica las tarifas, y el sistema lo iba a controlar con el permiso `TARIFAS_MODIFICAR`. | El jefe sigue definiendo los precios, pero los carga la administración, que es la única que usa el sistema. La regla vale en el complejo; el sistema no la controla. | 20/11/2026 |
+| RN18 | Una reserva cargada por el cliente desde el sitio web queda pendiente hasta que se registra la seña. | No hay sitio web. Que toda reserva nace pendiente lo sigue diciendo RN05. | 20/11/2026 |
+| RN19 | Cada usuario tiene un perfil y solo hace lo que permiten sus permisos; un cliente ve solo sus reservas. | Lo usa una sola persona: no hay perfiles ni permisos, y los clientes no entran al sistema. | 20/11/2026 |
+| S7 | Los perfiles son escalonados: cada uno hereda los permisos de los de menor jerarquía. | Ya no hay perfiles. | 20/11/2026 |

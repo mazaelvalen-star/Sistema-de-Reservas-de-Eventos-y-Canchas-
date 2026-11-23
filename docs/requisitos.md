@@ -19,7 +19,7 @@ prueba.
 | RF05 | Modificar los datos de un cliente y de su domicilio. | RN08 | `PUT /api/clientes/{id}` | CLI-09, CLI-10 | Hecho, Sprint 2 |
 | RF06 | Eliminar un cliente que no tiene reservas. | RN11 | `DELETE /api/clientes/{id}` | CLI-11 a CLI-13 | Hecho, Sprint 2 |
 | RF07 | Consultar la lista de precios. | — | `GET /api/tarifas` y `GET /api/espacios/{id}/tarifas` | TAR-01 a TAR-03, TAR-14 | Hecho, Sprint 2 |
-| RF08 | Definir, cambiar y quitar la tarifa de un espacio para afiliados y para no afiliados. | RN07, RN12 | `PUT` y `DELETE /api/espacios/{id}/tarifas/{condicion}` | TAR-04 a TAR-13 | Hecho, Sprint 2. Falta el control de RN12. |
+| RF08 | Definir, cambiar y quitar la tarifa de un espacio para afiliados y para no afiliados. | RN07 | `PUT` y `DELETE /api/espacios/{id}/tarifas/{condicion}` | TAR-04 a TAR-13 | Hecho, Sprint 2 |
 | RF09 | Registrar una reserva de uno o varios espacios para un cliente. | RN01, RN03, RN05, RN07, RN08, RN16, RN17 | `POST /api/reservas` | RES-01 a RES-13 | Hecho, Sprint 1 |
 | RF10 | Rechazar una reserva superpuesta y proponer espacios libres del mismo tipo. | RN01 | Respuesta 409 de `POST /api/reservas` y de `PUT /api/reservas/{id}` | RES-02, RES-18, SIM-01 | Hecho, Sprint 1 |
 | RF11 | Consultar el calendario de reservas, con filtros por fecha, espacio, cliente y estado. | — | `GET /api/reservas` | RES-14 a RES-16 | Hecho, Sprint 1 |
@@ -31,12 +31,21 @@ prueba.
 | RF17 | Confirmar la reserva cuando lo pagado alcanza la seña. | RN05, RN15 | El mismo pedido de RF16 | PAG-01, PAG-02, PAG-10 | Hecho, Sprint 1 |
 | RF18 | Consultar los pagos de una reserva. | — | `GET /api/reservas/{id}/pagos` | PAG-06 | Hecho, Sprint 1 |
 | RF19 | Administrar los medios de pago. | — | `/api/tipos-pago` | MED-01 a MED-08 | Hecho, Sprint 2 |
-| RF20 | Iniciar sesión con usuario y clave. | RN19 | — | — | Pendiente, Sprint 3 |
-| RF21 | Permitir cada acción solo a los perfiles que tienen el permiso. | RN12, RN19 | — | — | Pendiente, Sprint 3 |
-| RF22 | Que un cliente reserve desde el sitio web y vea solo sus reservas. | RN18, RN19 | — | — | Pendiente, Sprint 3 |
 
 Las reservas de un cliente (módulo de clientes del README) se consultan con RF11:
 `GET /api/reservas?idCliente=1`.
+
+## Requisitos descartados
+
+El 20/11/2026 el complejo confirmó que no hay sitio web y que el sistema lo usa una sola persona de la
+administración, en una computadora (ver [Confirmados](supuestos.md#confirmados)). Estos requisitos,
+que estaban pendientes para el Sprint 3, quedaron sin efecto. Los códigos no se reutilizan.
+
+| ID | Qué pedía | Por qué se descartó |
+| --- | --- | --- |
+| RF20 | Iniciar sesión con usuario y clave. | Lo usa una sola persona en una computadora (A3). |
+| RF21 | Permitir cada acción solo a los perfiles que tienen el permiso. | Con una sola persona no hay perfiles ni permisos (RN19 y S7, descartados). |
+| RF22 | Que un cliente reserve desde el sitio web y vea solo sus reservas. | No hay sitio web (RN18, descartada). |
 
 ## Requisitos no funcionales
 
@@ -50,7 +59,7 @@ Las reservas de un cliente (módulo de clientes del README) se consultan con RF1
 
 ## Fuera de esta versión
 
-- Pantallas y comunicación por WhatsApp: ver A1 y A2 en [supuestos.md](supuestos.md).
+- Pantallas, comunicación por WhatsApp y login: ver A1, A2 y A3 en [supuestos.md](supuestos.md).
 - Pagos en línea, facturación electrónica y aplicación móvil: son las limitaciones que ya declara el
   README principal.
 - Bloqueo de fechas por actividades del gremio y turnos fijos semanales de las canchas: dependen de

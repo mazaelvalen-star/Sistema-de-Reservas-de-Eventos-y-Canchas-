@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Describe las 13 tablas de la base `atep_reservas`, que implementa el DER v4. La estructura sale de
+Describe las 9 tablas de la base `atep_reservas`, que implementa el DER v5. La estructura sale de
 `database/01_esquema.sql`; si se cambia una tabla ahí, hay que actualizar también esta página.
 
 Cómo leer las tablas:
@@ -51,13 +51,12 @@ Además:
 
 ## cliente
 
-La persona que reserva.
+La persona que reserva. No usa el sistema: sus datos los carga la administración.
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
 | `id_cliente` | INT | Sí | PK | Identificador del cliente. |
 | `id_domicilio` | INT | Sí | FK → domicilio, UQ | Su domicilio. |
-| `id_usuario` | INT | No | FK → usuario, UQ | Su cuenta para reservar desde la web. Vacío si no tiene. |
 | `dni` | VARCHAR(10) | Sí | UQ | 7 u 8 números, sin puntos. No se repite. |
 | `nombre` | VARCHAR(60) | Sí | — | Nombre. |
 | `apellido` | VARCHAR(60) | Sí | — | Apellido. |
@@ -73,7 +72,7 @@ Además:
 
 ## domicilio
 
-La dirección de un cliente o de un empleado. Cada domicilio es de una sola persona (S6).
+La dirección de un cliente. Cada domicilio es de un solo cliente (S6).
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
@@ -93,7 +92,6 @@ El centro del modelo: une al cliente con los espacios, el horario y los pagos.
 | --- | --- | --- | --- | --- |
 | `id_reserva` | INT | Sí | PK | Identificador de la reserva. |
 | `id_cliente` | INT | Sí | FK → cliente | Titular de la reserva. |
-| `id_usuario` | INT | Sí | FK → usuario | Usuario que la registró. |
 | `fecha_hora_inicio` | DATETIME | Sí | — | Cuándo empieza el evento. |
 | `fecha_hora_fin` | DATETIME | Sí | — | Cuándo termina. Puede ser del día siguiente: los eventos terminan a las 4:00. |
 | `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar (RN17). |
@@ -164,64 +162,6 @@ Los medios de pago que acepta el complejo.
 | `id_tipo_pago` | INT | Sí | PK | Identificador del medio de pago. |
 | `nombre` | VARCHAR(40) | Sí | UQ | Efectivo, Transferencia... No se repite. |
 | `activo` | BOOLEAN | Sí | — | FALSE = dado de baja: no se acepta en pagos nuevos. Por defecto, TRUE. |
-
-## empleado
-
-El personal del complejo.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_empleado` | INT | Sí | PK | Identificador del empleado. |
-| `id_domicilio` | INT | Sí | FK → domicilio, UQ | Su domicilio. |
-| `id_usuario` | INT | No | FK → usuario, UQ | Su cuenta para usar el sistema. Vacío si no lo usa. |
-| `dni` | VARCHAR(10) | Sí | UQ | 7 u 8 números, sin puntos. No se repite. |
-| `nombre` | VARCHAR(60) | Sí | — | Nombre. |
-| `apellido` | VARCHAR(60) | Sí | — | Apellido. |
-| `telefono` | VARCHAR(25) | No | — | Teléfono de contacto. |
-| `cargo` | VARCHAR(60) | Sí | — | Puesto que ocupa en el complejo. |
-| `activo` | BOOLEAN | Sí | — | FALSE = ya no trabaja en el complejo. Por defecto, TRUE. |
-
-Además:
-
-- `ck_empleado_dni`: el DNI tiene 7 u 8 números.
-
-## usuario
-
-La cuenta con la que un empleado o un cliente entra al sistema.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_usuario` | INT | Sí | PK | Identificador del usuario. |
-| `id_perfil` | INT | Sí | FK → perfil | Su perfil. Cada usuario tiene uno solo (RN19). |
-| `usuario` | VARCHAR(50) | Sí | UQ | Nombre con el que inicia sesión. No se repite. |
-| `clave_hash` | VARCHAR(255) | Sí | — | La clave pasada por una función de hash. Nunca se guarda la clave original. |
-| `activo` | BOOLEAN | Sí | — | FALSE = no puede entrar al sistema. Por defecto, TRUE. |
-
-## perfil
-
-Los niveles de acceso, ordenados por jerarquía (S7).
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_perfil` | INT | Sí | PK | Identificador del perfil. |
-| `nombre` | VARCHAR(50) | Sí | UQ | Jefe del complejo, Administrativo, Personal del complejo o Cliente. |
-| `jerarquia` | INT | Sí | UQ | Escalón del perfil. El 1 es el más alto, y no hay dos perfiles en el mismo escalón. |
-| `descripcion` | VARCHAR(200) | No | — | Para qué se usa el perfil. |
-
-Además:
-
-- `ck_perfil_jerarquia`: la jerarquía es mayor a cero.
-
-## permiso
-
-Las acciones que se pueden habilitar. Cada permiso indica el perfil mínimo que lo tiene.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_permiso` | INT | Sí | PK | Identificador del permiso. |
-| `id_perfil_minimo` | INT | Sí | FK → perfil | Perfil de menor jerarquía que tiene el permiso. Los de más jerarquía también lo tienen. |
-| `codigo` | VARCHAR(50) | Sí | UQ | Nombre corto que usa el programa, por ejemplo TARIFAS_MODIFICAR. |
-| `descripcion` | VARCHAR(150) | Sí | — | Qué permite hacer. |
 
 ## Índices agregados
 

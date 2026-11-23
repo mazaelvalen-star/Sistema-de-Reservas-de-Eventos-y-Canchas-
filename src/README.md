@@ -1,9 +1,9 @@
 # Backend · Sistema de reservas del Complejo ATEP
 
-API REST en ASP.NET Core (.NET 10) con Entity Framework Core y MySQL 8. Implementa el **DER v4 del
-grupo** (02/11/2026) y las reglas de negocio del relevamiento.
+API REST en ASP.NET Core (.NET 10) con Entity Framework Core y MySQL 8. Implementa el **DER v5 del
+grupo** (23/11/2026) y las reglas de negocio del relevamiento.
 
-**Estado (Sprint 2).** La base está completa (13 tablas) y la API cubre los requisitos RF01 a RF19:
+**Estado.** La base está completa (9 tablas) y la API cubre todos los requisitos de esta versión, RF01 a RF19:
 
 - **Espacios:** CRUD completo, que es el ejemplo a copiar.
 - **Clientes:** CRUD con su domicilio, búsqueda por DNI y por nombre (RN08, RN11).
@@ -11,7 +11,9 @@ grupo** (02/11/2026) y las reglas de negocio del relevamiento.
 - **Reservas:** alta, calendario, modificación y cancelación (RN01, RN03, RN05, RN06, RN07, RN10).
 - **Pagos:** seña y saldo, con uno o varios medios por pago (RN05, RN15).
 
-**Falta:** el login con perfiles y permisos (RF20 a RF22). Ver [Lo que sigue](#lo-que-sigue).
+**Quién la usa.** Una sola persona de la administración del complejo, en una computadora, así que no
+hay sitio web ni perfiles: lo confirmó el complejo el 20/11/2026. Tampoco hay login (A3 en
+[`docs/supuestos.md`](../docs/supuestos.md)). Lo que falta está en [Lo que sigue](#lo-que-sigue).
 
 Varias reglas están programadas sin que el complejo las haya confirmado. Están listadas, con el lugar
 donde se cambia cada una, en [`docs/supuestos.md`](../docs/supuestos.md).
@@ -130,10 +132,6 @@ pedido HTTP ──► Controller ──► Service ──► AtepDbContext (EF C
 | `Controllers/` | Solo HTTP: ruta, parámetros y código de respuesta. | Sin reglas y sin try/catch. |
 | `Errors/` | Las excepciones de negocio y el manejador que las traduce a HTTP. | — |
 
-La traducción de nombres tiene una sola excepción: la columna `usuario` de la tabla `usuario`. En C# una
-propiedad no puede llamarse igual que su clase, así que es `Usuario.NombreUsuario` y `AtepDbContext` la
-mapea a mano.
-
 Los códigos de respuesta siguen un criterio fijo:
 
 - **400:** los datos vienen mal cargados.
@@ -162,8 +160,9 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
    espacios repetidos. Si algo falla, no se toca la base.
 2. **Buscar al cliente y su condición (RN08).** Si es afiliado se usa la tarifa de afiliado; si no, la otra.
 3. **Abrir una transacción.** Todo lo que sigue se guarda completo o no se guarda.
-4. **Bloquear los espacios** con `SELECT ... FOR UPDATE`. Es el paso más importante. Supongan que
-   alguien de la administración y un cliente desde la web piden el mismo quincho en el mismo segundo.
+4. **Bloquear los espacios** con `SELECT ... FOR UPDATE`. Es el paso más importante. Aunque el sistema lo
+   use una sola persona, pueden llegar dos pedidos para el mismo quincho en el mismo segundo: un doble
+   clic en Guardar, o la misma reserva cargada en dos ventanas.
    Sin bloqueo, los dos consultan, los dos ven el horario libre y quedan guardadas las dos reservas. Con
    el bloqueo, el segundo espera a que termine el primero y recién entonces consulta: ya ve la reserva
    del primero y recibe el 409. Lo prueba el caso SIM-01, que manda ocho reservas iguales al mismo
@@ -192,18 +191,19 @@ Hay tres ejemplos, de menor a mayor:
 - **`EspacioService`:** agrega filtros y una consulta de disponibilidad.
 - **`ClienteService`:** guarda dos tablas juntas, el cliente y su domicilio.
 
-Para sumar otro, por ejemplo Empleados:
+Para sumar otro, por ejemplo los bloqueos de fechas por actividades del gremio (RN13), si el complejo
+los pide:
 
-1. **DTOs** (`DTOs/EmpleadoDtos.cs`): un `record EmpleadoDto` para lo que sale y una clase
-   `EmpleadoGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
-2. **Service** (`Services/EmpleadoService.cs`): copiá el que más se parezca y cambiá las reglas.
-3. **Registro** en `Program.cs`: `builder.Services.AddScoped<EmpleadoService>();`
-4. **Controller** (`Controllers/EmpleadosController.cs`): copiá `ClientesController`.
-5. **Pruebas:** los pedidos en el `.http` y los casos en `tests/PruebasApi/Program.cs`, uno por cada regla.
-6. **Documentación:** su fila en `docs/requisitos.md` y, si programaste algo sin confirmar, en
-   `docs/supuestos.md`.
-
-Las entidades ya existen (en `Models/` están todas las del DER) y las tablas también.
+1. **Tabla y entidad:** primero la tabla en `01_esquema.sql` y en el DER; después su clase en
+   `Models/` (`Bloqueo.cs`) y su clave en `AtepDbContext`. La base va primero, como en el paso 1.
+2. **DTOs** (`DTOs/BloqueoDtos.cs`): un `record BloqueoDto` para lo que sale y una clase
+   `BloqueoGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
+3. **Service** (`Services/BloqueoService.cs`): copiá el que más se parezca y cambiá las reglas.
+4. **Registro** en `Program.cs`: `builder.Services.AddScoped<BloqueoService>();`
+5. **Controller** (`Controllers/BloqueosController.cs`): copiá `EspaciosController`.
+6. **Pruebas:** los pedidos en el `.http` y los casos en `tests/PruebasApi/Program.cs`, uno por cada regla.
+7. **Documentación:** su fila en `docs/requisitos.md`, sus columnas en `docs/diccionario-de-datos.md` y,
+   si programaste algo sin confirmar, en `docs/supuestos.md`.
 
 ## Lo que sigue
 
@@ -212,27 +212,23 @@ todo en el mismo *pull request*.
 
 | Tarea | Qué tiene que cumplir |
 | --- | --- |
-| **Login y permisos** (RF20 a RF22) | Usuario y clave con JWT. Un usuario puede usar un permiso si la jerarquía de su perfil es igual o más alta (número menor o igual) que la del perfil mínimo del permiso (S7). RN19: el cliente solo ve lo suyo. RN12: solo el jefe modifica tarifas. El usuario conectado reemplaza a `IdUsuarioProvisorio`. |
-| **Empleados** | CRUD con su domicilio, igual que Clientes. Hace falta para darles un usuario. |
+| **Respuestas del complejo** | Aplicar lo que conteste Emiliano a las preguntas de `docs/supuestos.md`. Las primeras (turnos de las canchas y precios: S2, S3 y S5) pueden cambiar las tablas `reserva` y `tarifa`. |
 | **Datos reales** | Reemplazar lo marcado `[PRUEBA]` en `02_datos_iniciales.sql`: espacios, capacidades y tarifas del complejo. |
-| **Alcance** | Definir si hay pantallas y qué pasa con WhatsApp (A1 y A2 en `docs/supuestos.md`), y actualizar el README principal. |
+| **Alcance** | Definir si hay pantallas y qué pasa con WhatsApp (A1 y A2 en `docs/supuestos.md`), y actualizar el README principal. Si hay pantallas, son para la administración en una computadora, no un sitio web. |
 
 ## Decisiones técnicas
 
 - **.NET 10** (LTS) con **EF Core 9** a través de **Pomelo 9.0.0**, el proveedor de MySQL más usado.
   Pomelo todavía no tiene una versión para EF Core 10, y EF Core 9 funciona en .NET 10.
-- Las tablas y columnas son las del DER v4. Además del DER, la base agrega restricciones (`CHECK`,
+- Las tablas y columnas son las del DER v5. Además del DER, la base agrega restricciones (`CHECK`,
   `UNIQUE`) que no cambian el modelo: solo impiden datos inválidos. Están listadas en `database/README.md`.
 - RN06 no necesita una columna nueva: el vencimiento de una reserva pendiente se calcula desde
   `fecha_registro` más las horas configuradas. Al vencer, la reserva pasa al estado `Vencida`.
 - Las bajas de espacios y de medios de pago son lógicas. Las reservas nunca se borran (RN10).
-- Una persona puede ser cliente y empleado a la vez: el DNI no se repite dentro de cada tabla, pero sí
-  puede estar en las dos.
+- Sin login (A3 en `docs/supuestos.md`): el sistema lo usa una sola persona en una computadora. Si otra
+  materia lo pide, revertir el commit «Saca el login: el sistema lo usa una sola persona» devuelve la
+  tabla `usuario`, sin perfiles.
 
-Dos consecuencias del DER para tener en cuenta:
-
-- Como `RESERVA_ESPACIO` no guarda el precio de cada espacio y `TARIFA` guarda solo el precio actual, de
-  una reserva vieja se conoce el total (`monto_total`), pero no cuánto se cobró por cada espacio.
-- Con los perfiles escalonados (S7), el Personal del complejo también hereda el permiso `RESERVAS_PROPIAS`
-  del Cliente. No molesta, pero muestra el límite del supuesto: si aparece un perfil que no encaja en la
-  escalera, vuelve `PERFIL_PERMISO`.
+Una consecuencia del DER para tener en cuenta: como `RESERVA_ESPACIO` no guarda el precio de cada
+espacio y `TARIFA` guarda solo el precio actual, de una reserva vieja se conoce el total
+(`monto_total`), pero no cuánto se cobró por cada espacio.

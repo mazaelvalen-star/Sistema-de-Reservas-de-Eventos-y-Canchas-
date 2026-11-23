@@ -72,3 +72,33 @@ correr las pruebas nuevas:
 - Reemplazar los datos de prueba por los datos reales del complejo.
 - Cerrar el alcance: pantallas y WhatsApp (A1 y A2 en supuestos.md).
 - Validar los supuestos con el complejo.
+
+## Cambio de alcance · del 20/11 al 23/11/2026
+
+**Objetivo.** Ajustar el sistema a lo que confirmó el complejo: no hay sitio web, y el sistema lo usa
+una sola persona de la administración, en una computadora.
+
+**Hecho** (Matías Amarilla)
+
+- La confirmación llegó el 20/11/2026 por Emiliano Lopez, que trabaja en el complejo.
+- DER v5: se quitan USUARIO, PERFIL, PERMISO y EMPLEADO. La base pasa de 13 a 9 tablas.
+- API: se quitan los modelos y la configuración de usuarios, perfiles, permisos y empleados. Ningún
+  pedido de la API cambió: RF01 a RF19 siguen igual.
+- Pruebas de la base: se quitan R06, R07, R08 y R19, que probaban perfiles, permisos y usuarios.
+  Quedan 16 casos.
+- Documentación: supuestos, requisitos, diccionario de datos y los README.
+
+**Decisiones**
+
+- Se descartan RF20 a RF22, RN18, RN19 y S7. RN12 sigue valiendo en el complejo (el jefe define los
+  precios), pero el sistema ya no la controla.
+- Sin login en esta versión (A3): lo usa una sola persona y la Guía N.º 1 de Programación IV no pide
+  autenticación en esta etapa. Va en un commit aparte, para poder revertirlo si otra materia lo pide.
+- Si se hacen pantallas (A1), son para la administración en esa computadora, no un sitio web.
+
+**Quedó pendiente**
+
+- Las respuestas de Emiliano a las preguntas de supuestos.md, sobre todo las de los turnos de las
+  canchas y los precios (S2, S3 y S5), que pueden cambiar tablas.
+- Reemplazar los datos de prueba por los reales del complejo.
+- Cerrar el alcance: pantallas y WhatsApp (A1 y A2).
