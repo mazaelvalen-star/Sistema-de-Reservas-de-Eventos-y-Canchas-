@@ -1,14 +1,14 @@
 # Diccionario de datos
 
-Describe las 13 tablas de la base `atep_reservas`, que implementa el DER v4. La estructura sale de
+Describe las 9 tablas de la base `atep_reservas`, que implementa el DER v5. La estructura sale de
 `database/01_esquema.sql`; si se cambia una tabla ahí, hay que actualizar también esta página.
 
 Cómo leer las tablas:
 
 - **Obligatorio:** «Sí» significa que la columna no acepta valores vacíos (`NOT NULL`).
 - **Clave:** PK es la clave primaria, FK una clave foránea (con la tabla a la que apunta) y UQ un valor que no se repite.
-- Los códigos RN son reglas de negocio y los S son supuestos del modelo. Los que siguen sin confirmar están en
-  [supuestos.md](supuestos.md).
+- Los códigos RN son reglas de negocio, los S son supuestos del modelo y los C, supuestos del código. Los que
+  siguen sin confirmar están en [supuestos.md](supuestos.md).
 
 Todas las claves primarias son números que MySQL asigna automáticamente (`AUTO_INCREMENT`), y los importes son
 `DECIMAL(12,2)`, que guarda los centavos sin errores de redondeo.
@@ -21,7 +21,7 @@ Lo que el complejo alquila: el salón, los quinchos, la cantina y las canchas.
 | --- | --- | --- | --- | --- |
 | `id_espacio` | INT | Sí | PK | Identificador del espacio. |
 | `nombre` | VARCHAR(60) | Sí | UQ | Nombre con el que se lo conoce, por ejemplo «Quincho 1». No se repite. |
-| `tipo` | VARCHAR(20) | Sí | — | Salon, Quincho, Cantina o Cancha. |
+| `tipo` | VARCHAR(20) | Sí | — | Salon, Quincho, Cantina o Cancha. Las canchas se cobran por hora y no llevan seña (RN07, RN20). |
 | `descripcion` | VARCHAR(300) | No | — | Servicios incluidos en el alquiler. |
 | `capacidad` | INT | Sí | — | Cantidad máxima de personas (RN03). |
 | `habilitado` | BOOLEAN | Sí | — | FALSE = dado de baja: no se puede reservar, pero conserva su historial. Por defecto, TRUE. |
@@ -33,14 +33,16 @@ Además:
 
 ## tarifa
 
-El precio de cada espacio para afiliados y para no afiliados. Hay una sola fila por espacio y condición (S3).
+El precio de cada espacio para afiliados y para no afiliados. Hay una sola fila por espacio y condición, porque
+el precio no cambia por día ni por horario (S3, confirmado). Cuando cambia, las reservas que todavía no están
+pagadas del todo pasan al precio nuevo (RN21).
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
 | `id_tarifa` | INT | Sí | PK | Identificador de la tarifa. |
 | `id_espacio` | INT | Sí | FK → espacio, UQ compuesta | Espacio al que corresponde el precio. |
 | `condicion` | VARCHAR(20) | Sí | UQ compuesta | Afiliado o NoAfiliado. |
-| `monto` | DECIMAL(12,2) | Sí | — | Precio del espacio para esa condición, en pesos. |
+| `monto` | DECIMAL(12,2) | Sí | — | Precio del espacio para esa condición, en pesos: por evento, o por hora en las canchas (RN07). |
 | `fecha_actualizacion` | DATE | Sí | — | Día del último cambio de precio. |
 
 Además:
@@ -51,13 +53,12 @@ Además:
 
 ## cliente
 
-La persona que reserva.
+La persona que reserva. No usa el sistema: sus datos los carga la administración.
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
 | `id_cliente` | INT | Sí | PK | Identificador del cliente. |
 | `id_domicilio` | INT | Sí | FK → domicilio, UQ | Su domicilio. |
-| `id_usuario` | INT | No | FK → usuario, UQ | Su cuenta para reservar desde la web. Vacío si no tiene. |
 | `dni` | VARCHAR(10) | Sí | UQ | 7 u 8 números, sin puntos. No se repite. |
 | `nombre` | VARCHAR(60) | Sí | — | Nombre. |
 | `apellido` | VARCHAR(60) | Sí | — | Apellido. |
@@ -73,7 +74,7 @@ Además:
 
 ## domicilio
 
-La dirección de un cliente o de un empleado. Cada domicilio es de una sola persona (S6).
+La dirección de un cliente. Cada domicilio es de un solo cliente (S6).
 
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
@@ -93,16 +94,15 @@ El centro del modelo: une al cliente con los espacios, el horario y los pagos.
 | --- | --- | --- | --- | --- |
 | `id_reserva` | INT | Sí | PK | Identificador de la reserva. |
 | `id_cliente` | INT | Sí | FK → cliente | Titular de la reserva. |
-| `id_usuario` | INT | Sí | FK → usuario | Usuario que la registró. |
 | `fecha_hora_inicio` | DATETIME | Sí | — | Cuándo empieza el evento. |
 | `fecha_hora_fin` | DATETIME | Sí | — | Cuándo termina. Puede ser del día siguiente: los eventos terminan a las 4:00. |
-| `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar (RN17). |
+| `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar. El espacio queda ocupado desde esa hora (RN17). |
 | `tipo_evento` | VARCHAR(60) | No | — | Cumpleaños, casamiento, partido... |
 | `cantidad_invitados` | INT | No | — | Invitados que informa el cliente (RN16). No puede superar la capacidad (RN03). |
 | `detalle_armado` | VARCHAR(500) | No | — | Cómo quiere las mesas y las sillas (RN16). |
-| `monto_total` | DECIMAL(12,2) | Sí | — | Suma de las tarifas de sus espacios al momento de reservar. No cambia si después cambian los precios (RN07). |
-| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05, RN06 y RN10). Por defecto, Pendiente. |
-| `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Desde acá se cuenta el plazo para dejar la seña (RN06). Por defecto, el momento en que se guarda. |
+| `monto_total` | DECIMAL(12,2) | Sí | — | Suma de las tarifas de sus espacios: las canchas por hora y los demás por evento (RN07). Sigue la tarifa vigente hasta que la reserva se paga del todo (RN21). |
+| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05 y RN10). Solo una confirmada ocupa el espacio: una pendiente espera la seña (RN06), y una reserva solo de canchas nace confirmada (RN20). Por defecto, Pendiente. |
+| `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Desde acá se cuentan las horas para dejar la seña antes de que la reserva venza (C12). Por defecto, el momento en que se guarda. |
 
 Además:
 
@@ -164,64 +164,6 @@ Los medios de pago que acepta el complejo.
 | `id_tipo_pago` | INT | Sí | PK | Identificador del medio de pago. |
 | `nombre` | VARCHAR(40) | Sí | UQ | Efectivo, Transferencia... No se repite. |
 | `activo` | BOOLEAN | Sí | — | FALSE = dado de baja: no se acepta en pagos nuevos. Por defecto, TRUE. |
-
-## empleado
-
-El personal del complejo.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_empleado` | INT | Sí | PK | Identificador del empleado. |
-| `id_domicilio` | INT | Sí | FK → domicilio, UQ | Su domicilio. |
-| `id_usuario` | INT | No | FK → usuario, UQ | Su cuenta para usar el sistema. Vacío si no lo usa. |
-| `dni` | VARCHAR(10) | Sí | UQ | 7 u 8 números, sin puntos. No se repite. |
-| `nombre` | VARCHAR(60) | Sí | — | Nombre. |
-| `apellido` | VARCHAR(60) | Sí | — | Apellido. |
-| `telefono` | VARCHAR(25) | No | — | Teléfono de contacto. |
-| `cargo` | VARCHAR(60) | Sí | — | Puesto que ocupa en el complejo. |
-| `activo` | BOOLEAN | Sí | — | FALSE = ya no trabaja en el complejo. Por defecto, TRUE. |
-
-Además:
-
-- `ck_empleado_dni`: el DNI tiene 7 u 8 números.
-
-## usuario
-
-La cuenta con la que un empleado o un cliente entra al sistema.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_usuario` | INT | Sí | PK | Identificador del usuario. |
-| `id_perfil` | INT | Sí | FK → perfil | Su perfil. Cada usuario tiene uno solo (RN19). |
-| `usuario` | VARCHAR(50) | Sí | UQ | Nombre con el que inicia sesión. No se repite. |
-| `clave_hash` | VARCHAR(255) | Sí | — | La clave pasada por una función de hash. Nunca se guarda la clave original. |
-| `activo` | BOOLEAN | Sí | — | FALSE = no puede entrar al sistema. Por defecto, TRUE. |
-
-## perfil
-
-Los niveles de acceso, ordenados por jerarquía (S7).
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_perfil` | INT | Sí | PK | Identificador del perfil. |
-| `nombre` | VARCHAR(50) | Sí | UQ | Jefe del complejo, Administrativo, Personal del complejo o Cliente. |
-| `jerarquia` | INT | Sí | UQ | Escalón del perfil. El 1 es el más alto, y no hay dos perfiles en el mismo escalón. |
-| `descripcion` | VARCHAR(200) | No | — | Para qué se usa el perfil. |
-
-Además:
-
-- `ck_perfil_jerarquia`: la jerarquía es mayor a cero.
-
-## permiso
-
-Las acciones que se pueden habilitar. Cada permiso indica el perfil mínimo que lo tiene.
-
-| Columna | Tipo | Obligatorio | Clave | Qué guarda |
-| --- | --- | --- | --- | --- |
-| `id_permiso` | INT | Sí | PK | Identificador del permiso. |
-| `id_perfil_minimo` | INT | Sí | FK → perfil | Perfil de menor jerarquía que tiene el permiso. Los de más jerarquía también lo tienen. |
-| `codigo` | VARCHAR(50) | Sí | UQ | Nombre corto que usa el programa, por ejemplo TARIFAS_MODIFICAR. |
-| `descripcion` | VARCHAR(150) | Sí | — | Qué permite hacer. |
 
 ## Índices agregados
 

@@ -2,9 +2,9 @@
 
 | Prueba | Qué verifica | Dónde está |
 | --- | --- | --- |
-| Automáticas de la API | 87 casos que recorren cada requisito y cada regla de negocio por HTTP. | `PruebasApi/` |
-| Restricciones de la base (MAN-02) | 20 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
-| Vencimiento de reservas (MAN-01) | Que una reserva pendiente sin seña vence y libera su horario (RN06). | Se hace a mano, más abajo. |
+| Automáticas de la API | 98 casos que recorren cada requisito y cada regla de negocio por HTTP. | `PruebasApi/` |
+| Restricciones de la base (MAN-02) | 16 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
+| Vencimiento de reservas (MAN-01) | Que una reserva pendiente que no recibe la seña en 72 horas pasa a `Vencida` y ya no acepta pagos (C12). | Se hace a mano, más abajo. |
 
 Todas arrancan con **la base recién creada**: los casos dependen de los datos iniciales (los clientes
 1 y 2, los espacios 1 a 7), y cada corrida deja reservas y pagos cargados.
@@ -29,7 +29,7 @@ Todas arrancan con **la base recién creada**: los casos dependen de los datos i
 
 Cada caso ocupa un renglón, con `OK` o `FALLA`. Cuando un caso falla, debajo aparece el pedido, el
 código que devolvió la API y la respuesta. La última línea es el resumen, que tiene que decir
-`Resultado: 87 de 87 casos aprobados.`
+`Resultado: 98 de 98 casos aprobados.`
 
 Si la base no está recién creada, el programa avisa y no corre nada. Si la API está en otra dirección,
 se le pasa al final: `dotnet run --project tests/PruebasApi -- http://localhost:5000`.
@@ -90,30 +90,41 @@ el caso. Están explicados en [docs/requisitos.md](../docs/requisitos.md) y
 
 ### Reservas
 
+Las reservas que llevan seña nacen pendientes y no ocupan la fecha hasta que se paga (RN06); las de
+canchas no llevan seña y nacen confirmadas (RN20). Por eso los choques (RN01) se prueban con la cancha.
+
 | Caso | Verifica | Qué se prueba | Respuesta esperada |
 | --- | --- | --- | --- |
 | RES-01 | RN05 | Reservar el Quincho 1: queda pendiente, con tarifa de no afiliado y seña del 50 % | 201 |
-| RES-02 | RN01 | Otra reserva que se pisa (22 a 02): rechazada, con el conflicto y el Quincho 2 como alternativa | 409 |
-| RES-03 | RF02 | Ahora solo el Quincho 2 figura libre de 20 a 23 | 200 |
-| RES-04 | RN07 | Reserva que empieza justo cuando termina la otra (23 a 01), con tarifa de afiliada | 201 |
-| RES-05 | RN03 | Más invitados (300) que la capacidad del quincho (50) | 422 |
-| RES-06 | RF09 | El fin es anterior al inicio | 400 |
-| RES-07 | C5 | Reserva con fecha pasada | 400 |
-| RES-08 | RF09 | El mismo espacio dos veces en la reserva | 400 |
-| RES-09 | RF09 | Cliente que no existe | 404 |
-| RES-10 | RF09 | Espacio que no existe | 404 |
-| RES-11 | RN07 | Reserva de dos espacios (cantina y cancha de básquet): el monto es la suma | 201 |
-| RES-12 | RN17 | Ingreso para decorar posterior al inicio del evento | 400 |
-| RES-13 | RF01 | Reservar un espacio dado de baja | 422 |
-| RES-14 | RF11 | Calendario de ese día: las dos reservas del Quincho 1 | 200 |
-| RES-15 | RF11 | Reservas de un cliente | 200 |
-| RES-16 | RF11 | Filtrar por estado: la única confirmada es la de los datos iniciales | 200 |
-| RES-17 | RF13 | Modificar el horario (19 a 22) y los invitados: no choca consigo misma | 200 |
-| RES-18 | RN01 | Modificar a un horario que se pisa con otra reserva | 409 |
-| RES-19 | RN03 | Modificar a más invitados que la capacidad | 422 |
-| RES-20 | RF12 | Reserva que no existe | 404 |
+| RES-02 | RN06 | Sin seña no se guarda la fecha: otra reserva del Quincho 1 que se pisa (22 a 02) también entra | 201 |
+| RES-03 | RN06 | Las reservas pendientes no ocupan: los dos quinchos siguen libres de 20 a 23 | 200 |
+| RES-04 | RN20 | Cancha de fútbol de 18 a 20: no lleva seña, queda confirmada y se cobra por hora | 201 |
+| RES-05 | RN01 | Otra reserva de la cancha que se pisa (19 a 21): rechazada, con el conflicto y otra cancha como alternativa | 409 |
+| RES-06 | RN07 | Cancha que empieza justo cuando termina la otra (20 a 21), con tarifa de afiliada | 201 |
+| RES-07 | RF02 | La cancha de fútbol ya no figura libre de 18 a 21; las otras dos canchas sí | 200 |
+| RES-08 | RN03 | Más invitados (300) que la capacidad del quincho (50) | 422 |
+| RES-09 | RF09 | El fin es anterior al inicio | 400 |
+| RES-10 | C5 | Reserva con fecha pasada | 400 |
+| RES-11 | RF09 | El mismo espacio dos veces en la reserva | 400 |
+| RES-12 | RF09 | Cliente que no existe | 404 |
+| RES-13 | RF09 | Espacio que no existe | 404 |
+| RES-14 | RN07 | Cantina y cancha de básquet (21 a 04): la cantina por evento, la cancha por hora, y la seña sobre el total | 201 |
+| RES-15 | RN17 | Ingreso para decorar posterior al inicio del evento | 400 |
+| RES-16 | RF01 | Reservar un espacio dado de baja | 422 |
+| RES-17 | RN17 | El ingreso para decorar ocupa el espacio: el salón no está libre la mañana del evento de los datos iniciales | 200 |
+| RES-18 | RF11 | Calendario de ese día: las cuatro reservas, pendientes y confirmadas | 200 |
+| RES-19 | RF11 | Reservas de un cliente: las dos de Juan | 200 |
+| RES-20 | RF11 | Filtrar por estado: confirmadas, la de los datos iniciales y las dos de la cancha | 200 |
+| RES-21 | RF13 | Modificar el horario (19 a 22) y los invitados: no choca consigo misma | 200 |
+| RES-22 | RN01 | Modificar la cancha a un horario que se pisa con otra reserva confirmada | 409 |
+| RES-23 | RN07 | Alargar la cancha a tres horas (17 a 20): el monto pasa a $150.000 | 200 |
+| RES-24 | RN03 | Modificar a más invitados que la capacidad | 422 |
+| RES-25 | RF12 | Reserva que no existe | 404 |
 
 ### Pagos
+
+PAG-09 a PAG-13 prueban la consecuencia de RN06: si dos reservas pendientes se pisan, se queda con la
+fecha la primera que deja la seña, y la seña de la otra se rechaza sin registrar el pago.
 
 | Caso | Verifica | Qué se prueba | Respuesta esperada |
 | --- | --- | --- | --- |
@@ -125,8 +136,11 @@ el caso. Están explicados en [docs/requisitos.md](../docs/requisitos.md) y
 | PAG-06 | RF18 | Consultar los pagos: son dos, y el segundo tiene dos detalles | 200 |
 | PAG-07 | RF16 | Pagar el saldo completo | 201 |
 | PAG-08 | RF16 | Pagar cuando ya no queda saldo | 422 |
-| PAG-09 | C2 | Cancha de $20.000: la seña mínima ($50.000) no puede superar el total | 201 |
-| PAG-10 | C2 | Al pagar esos $20.000 la reserva queda confirmada y sin saldo | 201 |
+| PAG-09 | RN06 | Sin seña entran dos reservas del Quincho 1 que se pisan: la de María, de 20 a 23... | 201 |
+| PAG-10 | RN06 | ...y la de Juan, de 21 a 24 | 201 |
+| PAG-11 | RN05 | María deja la seña ($60.000): su reserva queda confirmada | 201 |
+| PAG-12 | RN06 | La seña de Juan llega tarde: el horario ya está confirmado para María | 409 |
+| PAG-13 | RN06 | El pago rechazado no quedó registrado: la reserva de Juan sigue pendiente y sin pagos | 200 |
 
 ### Cancelación
 
@@ -137,9 +151,14 @@ el caso. Están explicados en [docs/requisitos.md](../docs/requisitos.md) y
 | CAN-03 | RF14 | Cancelar una reserva ya cancelada | 409 |
 | CAN-04 | RF13 | Modificar una reserva cancelada | 409 |
 | CAN-05 | RF16 | Registrar un pago en una reserva cancelada | 409 |
-| CAN-06 | RN10 | El horario cancelado quedó libre: se puede reservar de nuevo | 201 |
+| CAN-06 | RN10 | El horario cancelado quedó libre: se puede volver a reservar la cancha de 20 a 21 | 201 |
+| CAN-07 | RN09 | Cancelar una reserva con seña: el complejo se queda con la seña y el pago sigue registrado | 200 |
+| CAN-08 | RN10 | Con el Quincho 1 libre, ahora sí entra la seña de Juan | 201 |
 
 ### Tarifas
+
+TAR-05 y TAR-06 prueban RN21: al cambiar una tarifa, las reservas que todavía no están pagadas del
+todo pasan al precio nuevo; las pagadas conservan el suyo.
 
 | Caso | Verifica | Qué se prueba | Respuesta esperada |
 | --- | --- | --- | --- |
@@ -147,16 +166,17 @@ el caso. Están explicados en [docs/requisitos.md](../docs/requisitos.md) y
 | TAR-02 | RF07 | Lista de precios para no afiliados | 200 |
 | TAR-03 | S3 | Un espacio tiene dos tarifas, una por condición | 200 |
 | TAR-04 | RF08 | Cambiar una tarifa: guarda el monto y la fecha de hoy | 200 |
-| TAR-05 | C4 | La reserva ya registrada conserva su monto ($150.000) | 200 |
-| TAR-06 | RN07 | Una reserva nueva usa la tarifa nueva ($180.000) | 201 |
-| TAR-07 | RF08 | Tarifa de un espacio que no existe | 404 |
-| TAR-08 | RF08 | Condición que no existe (Jubilado) | 400 |
-| TAR-09 | RF08 | Monto en cero | 400 |
-| TAR-10 | RF08 | Quitar la tarifa de no afiliados de la cancha de pádel | 204 |
-| TAR-11 | RN07 | Sin tarifa para su condición, el espacio no se puede reservar | 422 |
-| TAR-12 | RF08 | Quitar una tarifa que no está | 404 |
-| TAR-13 | RF08 | Definir una tarifa que no existía | 200 |
-| TAR-14 | RF07 | Tarifas de un espacio que no existe | 404 |
+| TAR-05 | RN21 | La reserva pagada del todo conserva su precio ($150.000) | 200 |
+| TAR-06 | RN21 | La reserva con seña pero con saldo pasa al precio nuevo ($180.000) | 200 |
+| TAR-07 | RN07 | Una reserva nueva usa la tarifa nueva ($180.000) | 201 |
+| TAR-08 | RF08 | Tarifa de un espacio que no existe | 404 |
+| TAR-09 | RF08 | Condición que no existe (Jubilado) | 400 |
+| TAR-10 | RF08 | Monto en cero | 400 |
+| TAR-11 | RF08 | Quitar la tarifa de no afiliados de la cancha de pádel | 204 |
+| TAR-12 | RN07 | Sin tarifa para su condición, el espacio no se puede reservar | 422 |
+| TAR-13 | RF08 | Quitar una tarifa que no está | 404 |
+| TAR-14 | RF08 | Definir una tarifa que no existía | 200 |
+| TAR-15 | RF07 | Tarifas de un espacio que no existe | 404 |
 
 ### Medios de pago
 
@@ -189,26 +209,27 @@ depende del momento.
 
 ## Pruebas manuales
 
-### MAN-01 · Vencimiento de una reserva pendiente (RF15, RN06)
+### MAN-01 · Vencimiento de una reserva pendiente (RF15, C12)
 
-No se puede automatizar por HTTP, porque hay que simular que pasaron varios días.
+Una reserva pendiente no ocupa la fecha (RN06), así que vencerla no libera nada: sirve para que no se
+acumulen pendientes que nadie va a pagar. No se puede automatizar por HTTP, porque hay que simular que
+pasaron varios días.
 
 1. Con la base recién creada y la API andando, registrá una reserva con el pedido 3 del archivo
-   `.http`. Le toca el id 2 y queda `Pendiente`. El campo `vencePendiente` muestra hasta cuándo
-   guarda el lugar: 72 horas después.
+   `.http`. Le toca el id 2 y queda `Pendiente`. El campo `vencePendiente` muestra hasta cuándo se
+   puede dejar la seña: 72 horas después.
 2. En Workbench, simulá que pasaron cuatro días sin que se pague la seña:
 
    ```sql
    UPDATE atep_reservas.reserva SET fecha_registro = NOW() - INTERVAL 4 DAY WHERE id_reserva = 2;
    ```
 
-3. Comprobá estos tres resultados:
+3. Comprobá estos dos resultados:
 
    | Pedido | Resultado esperado |
    | --- | --- |
-   | `GET /api/reservas/2` | El estado pasó a `Vencida`. |
-   | Pedido 2 del `.http` (quinchos libres) | El Quincho 1 vuelve a figurar libre. |
-   | Pedido 6 del `.http` (pagar la seña) | 409, con `"regla": "ESTADO"`. |
+   | `GET /api/reservas/2` | El estado pasó a `Vencida` y `vencePendiente` quedó vacío. |
+   | Pedido 4 del `.http` (pagar la seña) | 409, con `"regla": "ESTADO"`. |
 
 ### MAN-02 · Restricciones de la base (RNF03)
 
@@ -218,9 +239,12 @@ Con la base recién creada, corré el script desde Workbench o desde la consola:
 mysql -u root -p --table -e "source tests/restricciones.sql"
 ```
 
-Muestra una tabla con los 20 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
-`20 de 20 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
+Muestra una tabla con los 16 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
+`16 de 16 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
 verse mal; en Workbench se ven bien.
+
+Los códigos van de R01 a R20 con saltos: R06, R07, R08 y R19 probaban perfiles, permisos y usuarios,
+que se quitaron con el DER v5. Los códigos no se reutilizan.
 
 El script no deja nada guardado, pero después hay que recrear la base: los intentos fallidos hacen
 avanzar los id automáticos.
@@ -231,4 +255,4 @@ Anotá cada corrida completa, sobre todo antes de una entrega.
 
 | Fecha | Quién | Automáticas | MAN-01 | MAN-02 | Observaciones |
 | --- | --- | --- | --- | --- | --- |
-|  |  | de 87 |  | de 20 |  |
+|  |  | de 98 |  | de 16 |  |

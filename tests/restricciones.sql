@@ -1,9 +1,9 @@
 -- =====================================================================
 --  restricciones.sql — pruebas de las restricciones de la base (MAN-02)
 --
---  Intenta guardar o borrar 20 cosas que la base NO debe permitir y
+--  Intenta guardar o borrar 16 cosas que la base NO debe permitir y
 --  muestra una tabla con el resultado de cada intento. La prueba sale
---  bien si los 20 casos dicen "OK: rechazado".
+--  bien si los 16 casos dicen "OK: rechazado".
 --
 --  Cómo correrlo, con la base recién creada:
 --    Workbench:  File > Open SQL Script, y el rayo.
@@ -68,14 +68,8 @@ BEGIN
   INSERT INTO cliente (id_domicilio, dni, nombre, apellido, telefono) VALUES (@dom, '12AB34', 'X', 'Y', '1');
   CALL anotar_caso('R05', 'DNI con letras (ck_cliente_dni)');
 
-  INSERT INTO perfil (nombre, jerarquia) VALUES ('Cajero', 2);
-  CALL anotar_caso('R06', 'Dos perfiles en el mismo escalón, S7 (uq_perfil_jerarquia)');
-
-  INSERT INTO permiso (id_perfil_minimo, codigo, descripcion) VALUES (99, 'PRUEBA', 'x');
-  CALL anotar_caso('R07', 'Permiso con un perfil mínimo que no existe (fk_permiso_perfil_minimo)');
-
-  INSERT INTO usuario (id_perfil, usuario, clave_hash) VALUES (2, 'admin', 'x');
-  CALL anotar_caso('R08', 'Nombre de usuario repetido (uq_usuario_usuario)');
+  -- R06, R07 y R08 probaban perfiles, permisos y usuarios, que se quitaron en el DER v5.
+  -- Los códigos no se reutilizan, para que cada caso se siga pudiendo rastrear.
 
   INSERT INTO tarifa (id_espacio, condicion, monto, fecha_actualizacion) VALUES (1, 'Afiliado', 1000, '2026-11-01');
   CALL anotar_caso('R09', 'Segunda tarifa del mismo espacio y condición, S3 (uq_tarifa_espacio_condicion)');
@@ -86,12 +80,12 @@ BEGIN
   INSERT INTO espacio (nombre, tipo, capacidad) VALUES ('Pileta', 'Pileta', 10);
   CALL anotar_caso('R11', 'Tipo de espacio que no existe (ck_espacio_tipo)');
 
-  INSERT INTO reserva (id_cliente, id_usuario, fecha_hora_inicio, fecha_hora_fin, monto_total)
-  VALUES (1, 1, '2027-01-01 22:00:00', '2027-01-01 20:00:00', 0);
+  INSERT INTO reserva (id_cliente, fecha_hora_inicio, fecha_hora_fin, monto_total)
+  VALUES (1, '2027-01-01 22:00:00', '2027-01-01 20:00:00', 0);
   CALL anotar_caso('R12', 'Reserva que termina antes de empezar (ck_reserva_horario)');
 
-  INSERT INTO reserva (id_cliente, id_usuario, fecha_hora_inicio, fecha_hora_fin, monto_total, estado)
-  VALUES (1, 1, '2027-01-01 20:00:00', '2027-01-01 22:00:00', 0, 'Borrada');
+  INSERT INTO reserva (id_cliente, fecha_hora_inicio, fecha_hora_fin, monto_total, estado)
+  VALUES (1, '2027-01-01 20:00:00', '2027-01-01 22:00:00', 0, 'Borrada');
   CALL anotar_caso('R13', 'Estado de reserva que no existe (ck_reserva_estado)');
 
   INSERT INTO reserva_espacio (id_reserva, id_espacio) VALUES (1, 1);
@@ -109,8 +103,7 @@ BEGIN
   DELETE FROM reserva WHERE id_reserva = 1;
   CALL anotar_caso('R18', 'Borrar una reserva que tiene pagos (fk_pago_reserva)');
 
-  DELETE FROM perfil WHERE id_perfil = 2;
-  CALL anotar_caso('R19', 'Borrar un perfil que es el mínimo de algún permiso (fk_permiso_perfil_minimo)');
+  -- R19 probaba borrar un perfil; se quitó con los perfiles en el DER v5.
 
   DELETE FROM tipo_pago WHERE id_tipo_pago = 2;
   CALL anotar_caso('R20', 'Borrar un medio de pago que ya se usó (fk_dp_tipo_pago)');

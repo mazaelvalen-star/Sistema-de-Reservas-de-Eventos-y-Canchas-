@@ -5,7 +5,7 @@ namespace AtepReservas.Api.Data;
 
 /// <summary>
 /// Puente entre las clases de C# y las tablas de MySQL. Las tablas las crea
-/// database/01_esquema.sql (DER v4): acá solo se le explica a EF Core cómo se corresponden.
+/// database/01_esquema.sql (DER v5): acá solo se le explica a EF Core cómo se corresponden.
 /// </summary>
 public class AtepDbContext : DbContext
 {
@@ -14,10 +14,6 @@ public class AtepDbContext : DbContext
     // Un DbSet por tabla: es lo que se consulta con LINQ (_db.Espacios.Where(...)).
     public DbSet<Domicilio> Domicilios => Set<Domicilio>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
-    public DbSet<Empleado> Empleados => Set<Empleado>();
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
-    public DbSet<Perfil> Perfiles => Set<Perfil>();
-    public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<Espacio> Espacios => Set<Espacio>();
     public DbSet<Tarifa> Tarifas => Set<Tarifa>();
     public DbSet<TipoPago> TiposPago => Set<TipoPago>();
@@ -41,33 +37,11 @@ public class AtepDbContext : DbContext
         // las adivina si se llaman "Id" o "EspacioId"; nosotros usamos "IdEspacio".
         modelo.Entity<Domicilio>().HasKey(d => d.IdDomicilio);
 
-        modelo.Entity<Perfil>().HasKey(p => p.IdPerfil);
-
-        modelo.Entity<Permiso>(e =>
-        {
-            e.HasKey(p => p.IdPermiso);
-            e.HasOne(p => p.PerfilMinimo).WithMany(p => p.Permisos).HasForeignKey(p => p.IdPerfilMinimo);
-        });
-
-        modelo.Entity<Usuario>(e =>
-        {
-            e.HasKey(u => u.IdUsuario);
-            e.HasOne(u => u.Perfil).WithMany(p => p.Usuarios).HasForeignKey(u => u.IdPerfil);
-        });
-
         modelo.Entity<Cliente>(e =>
         {
             e.HasKey(c => c.IdCliente);
-            // Uno a uno: cada cliente tiene su domicilio (S6) y puede tener un usuario.
+            // Uno a uno: cada cliente tiene su domicilio (S6).
             e.HasOne(c => c.Domicilio).WithOne().HasForeignKey<Cliente>(c => c.IdDomicilio);
-            e.HasOne(c => c.Usuario).WithOne(u => u.Cliente).HasForeignKey<Cliente>(c => c.IdUsuario);
-        });
-
-        modelo.Entity<Empleado>(e =>
-        {
-            e.HasKey(x => x.IdEmpleado);
-            e.HasOne(x => x.Domicilio).WithOne().HasForeignKey<Empleado>(x => x.IdDomicilio);
-            e.HasOne(x => x.Usuario).WithOne(u => u.Empleado).HasForeignKey<Empleado>(x => x.IdUsuario);
         });
 
         modelo.Entity<Espacio>().HasKey(e => e.IdEspacio);
@@ -84,7 +58,6 @@ public class AtepDbContext : DbContext
         {
             e.HasKey(r => r.IdReserva);
             e.HasOne(r => r.Cliente).WithMany(c => c.Reservas).HasForeignKey(r => r.IdCliente);
-            e.HasOne(r => r.Usuario).WithMany().HasForeignKey(r => r.IdUsuario);
         });
 
         modelo.Entity<ReservaEspacio>(e =>
@@ -117,9 +90,6 @@ public class AtepDbContext : DbContext
             foreach (var propiedad in entidad.GetProperties())
                 propiedad.SetColumnName(ASnakeCase(propiedad.Name));
         }
-
-        // La única excepción a la regla (va después del foreach para pisar el nombre automático).
-        modelo.Entity<Usuario>().Property(u => u.NombreUsuario).HasColumnName("usuario");
     }
 
     private static string ASnakeCase(string nombre)

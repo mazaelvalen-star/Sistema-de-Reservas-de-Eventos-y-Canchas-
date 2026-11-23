@@ -90,11 +90,6 @@ public class ClienteService
             throw new ReglaNegocioException("RN11",
                 $"No se puede eliminar a {cliente.Nombre} {cliente.Apellido}: tiene reservas registradas.");
 
-        // Cuando exista el login: si el cliente tiene cuenta, primero hay que darla de baja.
-        if (cliente.IdUsuario is not null)
-            throw new ReglaNegocioException("USUARIO",
-                "No se puede eliminar: el cliente tiene una cuenta de usuario asociada.");
-
         // El domicilio es solo de este cliente, así que se va con él. EF ordena los DELETE:
         // primero el cliente (que apunta al domicilio) y después el domicilio.
         _db.Clientes.Remove(cliente);

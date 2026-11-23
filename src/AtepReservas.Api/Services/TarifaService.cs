@@ -8,16 +8,19 @@ namespace AtepReservas.Api.Services;
 
 /// <summary>
 /// Precios del complejo.
-/// SUPUESTO S3: hay un solo precio por espacio y condición (afiliado o no afiliado). Por eso
-/// una tarifa no se identifica por su id, sino por el espacio y la condición.
+/// S3 (confirmado): hay un solo precio por espacio y condición (afiliado o no afiliado), que no
+/// cambia por día ni por horario. Por eso una tarifa no se identifica por su id, sino por el
+/// espacio y la condición. En las canchas, el monto es el precio de una hora (RN07).
 /// </summary>
 public class TarifaService
 {
     private readonly AtepDbContext _db;
+    private readonly ReservaService _reservas;
 
-    public TarifaService(AtepDbContext db)
+    public TarifaService(AtepDbContext db, ReservaService reservas)
     {
         _db = db;
+        _reservas = reservas;
     }
 
     /// <summary>Lista de precios de todo el complejo, ordenada por espacio.</summary>
@@ -47,12 +50,13 @@ public class TarifaService
     /// <summary>
     /// Define el precio de un espacio para una condición: si no existía lo crea y, si existía,
     /// le cambia el monto. En los dos casos anota la fecha de hoy.
-    /// Las reservas ya registradas no cambian, porque cada una guardó su monto_total (RN07).
+    /// RN21: las reservas que todavía no están pagadas del todo pasan al precio nuevo; las pagadas
+    /// del todo conservan el suyo.
     /// </summary>
     public async Task<TarifaDto> GuardarAsync(int idEspacio, CondicionTarifaria condicion, decimal monto)
     {
-        // SUPUESTO RN12: solo el jefe del complejo puede cambiar tarifas. Todavía no se controla:
-        // el permiso TARIFAS_MODIFICAR se va a exigir acá cuando exista el login (Sprint 3).
+        // RN12: los precios los define el jefe del complejo, pero el sistema no lo controla:
+        // lo usa una sola persona de la administración, que carga lo que el jefe decide.
         var espacio = await BuscarEspacioAsync(idEspacio);
 
         var tarifa = await _db.Tarifas
@@ -66,6 +70,8 @@ public class TarifaService
         tarifa.Monto = monto;
         tarifa.FechaActualizacion = DateOnly.FromDateTime(DateTime.Now);
         await _db.SaveChangesAsync();
+
+        await _reservas.ActualizarMontosAsync(idEspacio, condicion);   // RN21
 
         tarifa.Espacio = espacio;   // para armar el DTO sin volver a consultar
         return ADto(tarifa);

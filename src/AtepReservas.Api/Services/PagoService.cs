@@ -38,7 +38,8 @@ public class PagoService
 
     /// <summary>
     /// Registra un pago (seña, a cuenta o saldo) con uno o varios medios de pago.
-    /// RN05 y RN15: cuando lo pagado alcanza la seña, la reserva pendiente pasa a confirmada.
+    /// RN05 y RN15: cuando lo pagado alcanza la seña, la reserva pendiente pasa a confirmada,
+    /// siempre que su horario siga libre (RN06).
     /// Devuelve la reserva actualizada.
     /// </summary>
     public async Task<ReservaDetalleDto> RegistrarAsync(int idReserva, PagoCrearDto dto)
@@ -46,6 +47,10 @@ public class PagoService
         await _reservas.MarcarVencidasAsync();
 
         await using var transaccion = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        // Primero se bloquean los espacios de la reserva, en el mismo orden que en el alta y la
+        // modificación, y después la reserva. Con el mismo orden en todas las operaciones, dos
+        // operaciones simultáneas nunca quedan esperándose entre sí (deadlock).
+        await _reservas.BloquearEspaciosDeReservaAsync(idReserva);
         // Bloquea la reserva: si dos personas cargan un pago a la vez, la segunda espera
         // y calcula el saldo con el primer pago ya guardado (así nunca se cobra de más).
         await _db.Database.ExecuteSqlAsync($"SELECT id_reserva FROM reserva WHERE id_reserva = {idReserva} FOR UPDATE");
@@ -96,9 +101,13 @@ public class PagoService
         // RN05 + RN15: con la seña completa, la reserva queda confirmada y deja de vencer.
         // SUPUESTO C3: la seña se puede completar en varios pagos. Se compara todo lo pagado
         // hasta ahora, no solo este pago.
+        // (Una reserva solo de canchas nace confirmada, porque no lleva seña: RN20.)
         if (reserva.Estado == EstadoReserva.Pendiente
             && pagado + totalDelPago >= _reglas.CalcularSenia(reserva.MontoTotal))
         {
+            // RN06: una pendiente no guarda la fecha. Si otra reserva se confirmó en ese horario,
+            // la seña llega tarde: se responde 409 y el pago no se registra.
+            await _reservas.VerificarQueSigueLibreAsync(reserva);
             reserva.Estado = EstadoReserva.Confirmada;
         }
 

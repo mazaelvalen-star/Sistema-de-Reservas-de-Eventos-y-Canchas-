@@ -1,12 +1,12 @@
 # Base de datos
 
 Scripts de MySQL 8 (8.0.16 o superior) del Sistema de Reservas del Complejo ATEP. Implementan el
-**DER v4 del grupo** (02/11/2026): 13 tablas.
+**DER v5 del grupo** (23/11/2026): 9 tablas.
 
 | Archivo | Qué hace |
 | --- | --- |
-| `01_esquema.sql` | Borra y vuelve a crear la base `atep_reservas` con sus 13 tablas, claves y restricciones. |
-| `02_datos_iniciales.sql` | Carga perfiles, permisos, espacios, tarifas, medios de pago, dos clientes con domicilio y una reserva de ejemplo con su seña. |
+| `01_esquema.sql` | Borra y vuelve a crear la base `atep_reservas` con sus 9 tablas, claves y restricciones. |
+| `02_datos_iniciales.sql` | Carga espacios, tarifas, medios de pago, dos clientes con domicilio y una reserva de ejemplo con su seña. |
 
 ## Cómo correrlos
 
@@ -34,18 +34,17 @@ supuestos del DER:
 
 | Restricción | Qué impide |
 | --- | --- |
-| `uq_cliente_dni`, `uq_espacio_nombre`, `uq_usuario_usuario`... | Repetir un DNI, un nombre o un usuario. Sin distinguir tildes: "Salon" choca con "Salón". |
-| `uq_cliente_domicilio`, `uq_empleado_domicilio` (S6) | Que dos personas compartan el mismo domicilio. |
+| `uq_cliente_dni`, `uq_espacio_nombre`, `uq_tipo_pago_nombre` | Repetir un DNI o un nombre. Sin distinguir tildes: "Salon" choca con "Salón". |
+| `uq_cliente_domicilio` (S6) | Que dos clientes compartan el mismo domicilio. |
 | `ck_cliente_afiliado` (RN08) | Un afiliado sin número de afiliado. |
-| `uq_perfil_jerarquia` (S7) | Dos perfiles en el mismo escalón de la jerarquía. |
 | `uq_tarifa_espacio_condicion` (S3) | Dos tarifas para el mismo espacio y la misma condición. |
 | `ck_reserva_horario` | Una reserva que termina antes de empezar. |
 | `ck_reserva_estado` | Un estado que no sea Pendiente, Confirmada, Cancelada o Vencida. |
 | `uq_reserva_espacio` | El mismo espacio dos veces en una reserva. |
 | `ck_dp_monto` | Un detalle de pago en cero o negativo. |
-| FK sin `CASCADE` | Borrar un cliente con reservas (RN11), una reserva con pagos, un perfil que es mínimo de algún permiso o un medio de pago ya usado. |
+| FK sin `CASCADE` | Borrar un cliente con reservas (RN11), una reserva con pagos o un medio de pago ya usado. |
 
-Para comprobarlas hay un script, `tests/restricciones.sql`, que intenta guardar 20 datos inválidos y
+Para comprobarlas hay un script, `tests/restricciones.sql`, que intenta guardar 16 datos inválidos y
 muestra cuáles rechazó la base. Cómo correrlo está en [`tests/README.md`](../tests/README.md).
 
 La superposición de horarios (RN01) **no** se controla con una restricción: la controla la API dentro de
