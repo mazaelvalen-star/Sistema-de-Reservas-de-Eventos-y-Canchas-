@@ -6,29 +6,34 @@ namespace AtepReservas.Api.Services;
 /// </summary>
 public class ReglasOptions
 {
-    /// <summary>RN15: porcentaje del total que se pide de seña ("en general 50 %").</summary>
-    public decimal PorcentajeSenia { get; set; } = 50;
-
-    /// <summary>RN15: seña mínima.</summary>
+    /// <summary>
+    /// RN15: seña mínima para reservar. Cuánto deja cada cliente lo decide él, siempre que sea al
+    /// menos esto.
+    /// SUPUESTO C15: es la misma para todos los espacios.
+    /// </summary>
     public decimal SeniaMinima { get; set; } = 50000;
 
     /// <summary>
     /// SUPUESTO C12: horas que una reserva pendiente puede esperar la seña antes de pasar a
-    /// Vencida, contadas desde fecha_registro. No guarda el lugar: sin seña no se reserva la
-    /// fecha (RN06). Sirve para ordenar el calendario. Con 0, las pendientes no vencen.
+    /// Vencida, contadas desde fecha_registro. El complejo no reserva sin seña (RN06): la pendiente
+    /// es solo el paso entre cargar la reserva y cargar su seña, y no guarda la fecha. Si alguna
+    /// queda sin seña, vence, para que no se acumulen en el calendario. Con 0, no vencen.
     /// </summary>
     public int HorasVencimientoPendiente { get; set; } = 72;
 
     /// <summary>
-    /// RN15: el porcentaje del total, nunca menos que el mínimo, y nunca más que el total: si un
-    /// espacio que lleva seña costara menos que el mínimo, la seña sería el total.
-    /// Ej.: salón a $350.000 → seña $175.000. Las canchas no llevan seña (RN20).
+    /// RN22: semanas hacia adelante que un turno fijo tiene reservadas. El sistema las va renovando
+    /// solo, así el horario del turno siempre está ocupado ese tiempo.
+    /// SUPUESTO C16: 52 semanas, un año.
     /// </summary>
-    public decimal CalcularSenia(decimal montoTotal)
-    {
-        var porcentaje = Math.Round(montoTotal * PorcentajeSenia / 100m, 2);
-        return Math.Min(montoTotal, Math.Max(porcentaje, SeniaMinima));
-    }
+    public int SemanasTurnoFijo { get; set; } = 52;
+
+    /// <summary>
+    /// RN15: lo mínimo que hay que pagar para confirmar una reserva que lleva seña. Nunca más que el
+    /// total: si una reserva costara menos que la seña mínima, alcanzaría con pagarla entera.
+    /// Ej.: salón a $350.000 → hay que dejar al menos $50.000. Las canchas no llevan seña (RN20).
+    /// </summary>
+    public decimal CalcularSenia(decimal montoTotal) => Math.Min(montoTotal, SeniaMinima);
 
     /// <summary>
     /// C12: las pendientes registradas antes de este momento ya vencieron.
@@ -40,4 +45,7 @@ public class ReglasOptions
     /// <summary>Hasta cuándo se puede dejar la seña de una reserva pendiente (para mostrarlo).</summary>
     public DateTime? VencimientoDe(DateTime fechaRegistro) =>
         HorasVencimientoPendiente > 0 ? fechaRegistro.AddHours(HorasVencimientoPendiente) : null;
+
+    /// <summary>RN22: hasta dónde tiene que tener creadas sus semanas un turno fijo.</summary>
+    public DateTime HorizonteTurnosFijos(DateTime hoy) => hoy.Date.AddDays(7 * SemanasTurnoFijo);
 }

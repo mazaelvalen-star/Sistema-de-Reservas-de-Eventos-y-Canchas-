@@ -13,11 +13,13 @@ namespace AtepReservas.Api.Services;
 public class EspacioService
 {
     private readonly AtepDbContext _db;
+    private readonly TurnoFijoService _turnos;
 
     // Inyección de dependencias: ASP.NET crea el DbContext y nos lo pasa (ver Program.cs).
-    public EspacioService(AtepDbContext db)
+    public EspacioService(AtepDbContext db, TurnoFijoService turnos)
     {
         _db = db;
+        _turnos = turnos;
     }
 
     public async Task<List<EspacioDto>> ListarAsync(TipoEspacio? tipo, bool soloHabilitados)
@@ -82,6 +84,9 @@ public class EspacioService
         if (fin <= inicio)
             throw new ReglaNegocioException("HORARIO", "El fin tiene que ser posterior al inicio.",
                 StatusCodes.Status400BadRequest);
+
+        // Los turnos fijos tienen que tener creadas sus semanas (RN22).
+        await _turnos.ExtenderAsync();
 
         // Esta consulta no se ejecuta sola: queda como subconsulta (NOT IN) del SELECT de abajo.
         // Ocupan solo las reservas confirmadas (RN06), desde el ingreso para decorar (RN17).

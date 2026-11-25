@@ -38,7 +38,7 @@ public class PagoService
 
     /// <summary>
     /// Registra un pago (seña, a cuenta o saldo) con uno o varios medios de pago.
-    /// RN05 y RN15: cuando lo pagado alcanza la seña, la reserva pendiente pasa a confirmada,
+    /// RN05 y RN15: cuando lo pagado alcanza la seña mínima, la reserva pendiente pasa a confirmada,
     /// siempre que su horario siga libre (RN06).
     /// Devuelve la reserva actualizada.
     /// </summary>
@@ -98,7 +98,8 @@ public class PagoService
             pago.Detalles.Add(new DetallePago { IdTipoPago = detalle.IdTipoPago, Monto = detalle.Monto });
         _db.Pagos.Add(pago);
 
-        // RN05 + RN15: con la seña completa, la reserva queda confirmada y deja de vencer.
+        // RN05 + RN15: con la seña mínima completa, la reserva queda confirmada y deja de vencer.
+        // Cuánto deja de seña lo decide el cliente: puede pagar más que el mínimo.
         // SUPUESTO C3: la seña se puede completar en varios pagos. Se compara todo lo pagado
         // hasta ahora, no solo este pago.
         // (Una reserva solo de canchas nace confirmada, porque no lleva seña: RN20.)

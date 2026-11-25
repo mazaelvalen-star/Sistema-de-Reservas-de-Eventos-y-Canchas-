@@ -115,11 +115,11 @@ await p.Get("CLI-13", "RF06", "El cliente eliminado ya no existe", $"/api/client
 
 // ================================================================= RESERVAS
 p.Titulo("Reservas");
-var reservaJuan = Id(await p.Post("RES-01", "RN05", "Reservar el Quincho 1: queda pendiente, con tarifa de no afiliado y seña del 50 %",
+var reservaJuan = Id(await p.Post("RES-01", "RN05", "Reservar el Quincho 1: queda pendiente, con tarifa de no afiliado y una seña mínima de $50.000",
     "/api/reservas",
     new { idCliente = Juan, idsEspacios = new[] { Quincho1 }, fechaHoraInicio = F(0, 20), fechaHoraFin = F(0, 23),
           tipoEvento = "Cumpleaños", cantidadInvitados = 30 }, 201,
-    j => Txt(j, "estado") == "Pendiente" && Num(j, "montoTotal") == 150000 && Num(j, "seniaRequerida") == 75000
+    j => Txt(j, "estado") == "Pendiente" && Num(j, "montoTotal") == 150000 && Num(j, "seniaRequerida") == 50000
          && Num(j, "saldo") == 150000 && !EsNull(j, "vencePendiente")), "idReserva");
 await p.Post("RES-02", "RN06", "Sin seña no se guarda la fecha: otra reserva del Quincho 1 que se pisa (22 a 02) también entra",
     "/api/reservas",
@@ -161,11 +161,11 @@ await p.Post("RES-12", "RF09", "Cliente que no existe", "/api/reservas",
     new { idCliente = 9999, idsEspacios = new[] { Quincho2 }, fechaHoraInicio = F(0, 20), fechaHoraFin = F(0, 23) }, 404);
 await p.Post("RES-13", "RF09", "Espacio que no existe", "/api/reservas",
     new { idCliente = Maria, idsEspacios = new[] { 9999 }, fechaHoraInicio = F(0, 20), fechaHoraFin = F(0, 23) }, 404);
-await p.Post("RES-14", "RN07", "Cantina y cancha de básquet (21 a 04): la cantina por evento, la cancha por hora, y la seña sobre el total",
+await p.Post("RES-14", "RN07", "Cantina y cancha de básquet (21 a 04): la cantina por evento, la cancha por hora, y una sola seña para todo",
     "/api/reservas",
     new { idCliente = Maria, idsEspacios = new[] { Cantina, Basquet }, fechaHoraInicio = F(1, 21), fechaHoraFin = F(1, 28),
           ingresoDecoracion = F(1, 11), tipoEvento = "Comunión", cantidadInvitados = 100 }, 201,
-    j => Num(j, "montoTotal") == 360000 && Num(j, "seniaRequerida") == 180000 && Txt(j, "estado") == "Pendiente"
+    j => Num(j, "montoTotal") == 360000 && Num(j, "seniaRequerida") == 50000 && Txt(j, "estado") == "Pendiente"
          && j.GetProperty("espacios").GetArrayLength() == 2);
 await p.Post("RES-15", "RN17", "Ingreso para decorar posterior al inicio del evento", "/api/reservas",
     new { idCliente = Maria, idsEspacios = new[] { Quincho2 }, fechaHoraInicio = F(0, 20), fechaHoraFin = F(0, 23),
@@ -195,6 +195,19 @@ await p.Put("RES-23", "RN07", "Alargar la cancha a tres horas (17 a 20): el mont
 await p.Put("RES-24", "RN03", "Modificar a más invitados que la capacidad", $"/api/reservas/{reservaJuan}",
     new { fechaHoraInicio = F(0, 19), fechaHoraFin = F(0, 22), cantidadInvitados = 80 }, 422, j => Regla(j, "RN03"));
 await p.Get("RES-25", "RF12", "Reserva que no existe", "/api/reservas/9999", 404);
+await p.Post("RES-26", "RN23", "Cancha por una hora y media: las canchas se reservan por horas enteras", "/api/reservas",
+    new { idCliente = Juan, idsEspacios = new[] { Basquet }, fechaHoraInicio = F(4, 18), fechaHoraFin = F(4, 19, 30) }, 422,
+    j => Regla(j, "RN23"));
+await p.Put("RES-27", "RN23", "Modificar la cancha a una hora y media", $"/api/reservas/{reservaFutbol}",
+    new { fechaHoraInicio = F(0, 17), fechaHoraFin = F(0, 18, 30) }, 422, j => Regla(j, "RN23"));
+await p.Post("RES-28", "RN24", "Actividad del gremio: sin cargo, sin seña y confirmada", "/api/reservas",
+    new { idCliente = Maria, idsEspacios = new[] { Quincho2 }, fechaHoraInicio = F(4, 18), fechaHoraFin = F(4, 22),
+          tipoEvento = "Reunión del gremio", sinCargo = true }, 201,
+    j => Txt(j, "estado") == "Confirmada" && j.GetProperty("sinCargo").GetBoolean() && Num(j, "montoTotal") == 0
+         && Num(j, "seniaRequerida") == 0 && Num(j, "saldo") == 0);
+await p.Post("RES-29", "RN24", "La actividad del gremio ocupa el quincho como cualquier reserva", "/api/reservas",
+    new { idCliente = Juan, idsEspacios = new[] { Quincho2 }, fechaHoraInicio = F(4, 20), fechaHoraFin = F(4, 23) }, 409,
+    j => Regla(j, "RN01"));
 
 // ================================================================= PAGOS
 p.Titulo("Pagos");
@@ -223,11 +236,12 @@ await p.Post("PAG-08", "RF16", "Pagar cuando ya no queda saldo", pagos,
 var reservaMaria2 = Id(await p.Post("PAG-09", "RN06", "Sin seña entran dos reservas del Quincho 1 que se pisan: la de María, de 20 a 23...",
     "/api/reservas",
     new { idCliente = Maria, idsEspacios = new[] { Quincho1 }, fechaHoraInicio = F(2, 20), fechaHoraFin = F(2, 23) }, 201,
-    j => Txt(j, "estado") == "Pendiente" && Num(j, "seniaRequerida") == 60000), "idReserva");
+    j => Txt(j, "estado") == "Pendiente" && Num(j, "seniaRequerida") == 50000), "idReserva");
 var reservaJuan2 = Id(await p.Post("PAG-10", "RN06", "...y la de Juan, de 21 a 24", "/api/reservas",
     new { idCliente = Juan, idsEspacios = new[] { Quincho1 }, fechaHoraInicio = F(2, 21), fechaHoraFin = F(2, 24) }, 201,
-    j => Txt(j, "estado") == "Pendiente" && Num(j, "seniaRequerida") == 75000), "idReserva");
-await p.Post("PAG-11", "RN05", "María deja la seña ($60.000): su reserva queda confirmada", $"/api/reservas/{reservaMaria2}/pagos",
+    j => Txt(j, "estado") == "Pendiente" && Num(j, "seniaRequerida") == 50000), "idReserva");
+await p.Post("PAG-11", "RN15", "María elige dejar $60.000 de seña (el mínimo es $50.000): su reserva queda confirmada",
+    $"/api/reservas/{reservaMaria2}/pagos",
     new { concepto = "Seña", detalles = new[] { new { idTipoPago = Efectivo, monto = 60000 } } }, 201,
     j => Txt(j, "estado") == "Confirmada");
 await p.Post("PAG-12", "RN06", "La seña de Juan llega tarde: el horario ya está confirmado para María", $"/api/reservas/{reservaJuan2}/pagos",
@@ -250,7 +264,7 @@ var reservaFutbol2 = Id(await p.Post("CAN-06", "RN10", "El horario cancelado que
     "/api/reservas",
     new { idCliente = Juan, idsEspacios = new[] { Futbol }, fechaHoraInicio = F(0, 20), fechaHoraFin = F(0, 21) }, 201),
     "idReserva");
-await p.Delete("CAN-07", "RN09", "Cancelar una reserva con seña: el complejo se queda con la seña y el pago sigue registrado",
+await p.Delete("CAN-07", "RN09", "Cancelar una reserva con seña: pierde la seña que dejó y el pago sigue registrado",
     $"/api/reservas/{reservaMaria2}", 200, j => Txt(j, "estado") == "Cancelada" && Num(j, "totalPagado") == 60000);
 await p.Post("CAN-08", "RN10", "Con el Quincho 1 libre, ahora sí entra la seña de Juan", $"/api/reservas/{reservaJuan2}/pagos",
     new { concepto = "Seña", detalles = new[] { new { idTipoPago = Efectivo, monto = 75000 } } }, 201,
@@ -300,6 +314,62 @@ await p.Put("MED-07", "RF19", "Volver a activarlo", $"/api/tipos-pago/{tarjeta}"
 await p.Post("MED-08", "RF16", "Ahora sí se puede pagar con ese medio", $"/api/reservas/{reservaFutbol2}/pagos",
     new { concepto = "Pago de la cancha", detalles = new[] { new { idTipoPago = tarjeta, monto = 10000 } } }, 201,
     j => Num(j, "totalPagado") == 10000);
+
+// ================================================================= TURNOS FIJOS
+p.Titulo("Turnos fijos");
+// Juan juega al pádel todas las semanas, de 21 a 22, desde dentro de dos semanas. El sistema reserva
+// las semanas que empiezan antes del horizonte: hoy más 52 semanas (SemanasTurnoFijo en appsettings.json).
+var primerTurno = dia.AddDays(14).AddHours(21);
+var horizonte = DateTime.Today.AddDays(7 * 52);
+var semanasEsperadas = Enumerable.Range(0, 60).Count(k => k == 0 || primerTurno.AddDays(7 * k) < horizonte);
+string[] dias = { "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
+var turno = Id(await p.Post("TUR-01", "RN22", "Turno fijo de pádel: reserva el mismo día y horario todas las semanas",
+    "/api/turnos-fijos",
+    new { idCliente = Juan, idEspacio = Padel, primerInicio = F(14, 21), primerFin = F(14, 22) }, 201,
+    j => Txt(j, "diaSemana") == dias[(int)primerTurno.DayOfWeek] && Txt(j, "horaInicio") == "21:00"
+         && Num(j, "semanasReservadas") == semanasEsperadas && Txt(j, "proximoTurno") == F(14, 21) && EsNull(j, "fechaBaja")),
+    "idTurnoFijo");
+var semanasTurno = await p.Get("TUR-02", "RN22", "Cada semana es una reserva de cancha: confirmada, sin seña y a $25.000",
+    $"/api/reservas?idTurnoFijo={turno}", 200,
+    j => j.GetArrayLength() == semanasEsperadas
+         && j.EnumerateArray().All(r => Txt(r, "estado") == "Confirmada" && Num(r, "montoTotal") == 25000));
+await p.Get("TUR-03", "RN22", "Cuatro semanas después, la cancha de pádel sigue ocupada en ese horario",
+    $"/api/espacios/disponibles?inicio={F(42, 21)}&fin={F(42, 22)}&tipo=Cancha", 200,
+    j => j.EnumerateArray().All(e => Id(e, "idEspacio") != Padel));
+await p.Post("TUR-04", "RN01", "Otra reserva en una semana del turno: rechazada", "/api/reservas",
+    new { idCliente = Maria, idsEspacios = new[] { Padel }, fechaHoraInicio = F(28, 21), fechaHoraFin = F(28, 22) }, 409,
+    j => Regla(j, "RN01")
+         && Id(j.GetProperty("datos").GetProperty("conflictos")[0], "idReserva") == IdDe(semanasTurno, 2, "idReserva"));
+await p.Post("TUR-05", "RN22", "Turno fijo en un espacio que no es cancha", "/api/turnos-fijos",
+    new { idCliente = Juan, idEspacio = Quincho2, primerInicio = F(15, 21), primerFin = F(15, 22) }, 422, j => Regla(j, "RN22"));
+await p.Post("TUR-06", "RN23", "Turno fijo de una hora y media", "/api/turnos-fijos",
+    new { idCliente = Juan, idEspacio = Padel, primerInicio = F(15, 21), primerFin = F(15, 22, 30) }, 422, j => Regla(j, "RN23"));
+await p.Post("TUR-07", "C17", "Una de las semanas ya está ocupada: el turno no se crea y dice con qué choca", "/api/turnos-fijos",
+    new { idCliente = Juan, idEspacio = Futbol, primerInicio = F(-7, 18), primerFin = F(-7, 19) }, 409,
+    j => Regla(j, "RN01")
+         && j.GetProperty("datos").GetProperty("conflictos").EnumerateArray().Any(c => Id(c, "idReserva") == reservaFutbol));
+var semana0 = IdDe(semanasTurno, 0, "idReserva");
+var semana1 = IdDe(semanasTurno, 1, "idReserva");
+await p.Delete("TUR-08", "RN22", "Una semana no van: se cancela esa reserva y no pagan nada", $"/api/reservas/{semana0}", 200,
+    j => Txt(j, "estado") == "Cancelada" && Num(j, "totalPagado") == 0);
+await p.Post("TUR-09", "RN22", "Se paga cada vez que juegan", $"/api/reservas/{semana1}/pagos",
+    new { concepto = "Turno fijo", detalles = new[] { new { idTipoPago = Efectivo, monto = 25000 } } }, 201,
+    j => Num(j, "saldo") == 0 && Txt(j, "estado") == "Confirmada");
+await p.Delete("TUR-10", "RN22", "Dejan de venir: la baja cancela las semanas que vienen, salvo la que ya pagaron",
+    $"/api/turnos-fijos/{turno}", 200,
+    j => Txt(j, "fechaBaja") == DateTime.Today.ToString("yyyy-MM-dd") && Num(j, "semanasReservadas") == 1
+         && Txt(j, "proximoTurno") == F(21, 21));
+await p.Get("TUR-11", "RN22", "Después de la baja, la cancha de pádel queda libre en ese horario",
+    $"/api/espacios/disponibles?inicio={F(42, 21)}&fin={F(42, 22)}&tipo=Cancha", 200,
+    j => j.EnumerateArray().Any(e => Id(e, "idEspacio") == Padel));
+await p.Get("TUR-12", "C16", "La semana que ya pagaron sigue confirmada", $"/api/reservas/{semana1}", 200,
+    j => Txt(j, "estado") == "Confirmada" && Num(j, "totalPagado") == 25000 && Id(j, "idTurnoFijo") == turno);
+await p.Delete("TUR-13", "RF23", "Dar de baja un turno que ya está dado de baja", $"/api/turnos-fijos/{turno}", 409,
+    j => Regla(j, "ESTADO"));
+await p.Get("TUR-14", "RF23", "Turnos fijos activos: no queda ninguno", "/api/turnos-fijos", 200, j => j.GetArrayLength() == 0);
+await p.Get("TUR-15", "RF23", "Con los dados de baja está el de pádel, con su fecha de baja", "/api/turnos-fijos?soloActivos=false", 200,
+    j => j.GetArrayLength() == 1 && Id(j[0], "idTurnoFijo") == turno && !EsNull(j[0], "fechaBaja"));
+await p.Get("TUR-16", "RF23", "Turno fijo que no existe", "/api/turnos-fijos/9999", 404);
 
 // ================================================================= RESERVAS SIMULTÁNEAS
 p.Titulo("Operaciones simultáneas");
@@ -362,6 +432,8 @@ static bool Regla(JsonElement j, string codigo) =>
     j.ValueKind == JsonValueKind.Object && j.TryGetProperty("regla", out var regla) && regla.GetString() == codigo;
 static int Id(JsonElement j, string campo) =>
     j.ValueKind == JsonValueKind.Object && j.TryGetProperty(campo, out var valor) ? valor.GetInt32() : 0;
+static int IdDe(JsonElement lista, int posicion, string campo) =>
+    lista.ValueKind == JsonValueKind.Array && lista.GetArrayLength() > posicion ? Id(lista[posicion], campo) : 0;
 static decimal Num(JsonElement j, string campo) => j.GetProperty(campo).GetDecimal();
 static string? Txt(JsonElement j, string campo) => j.GetProperty(campo).GetString();
 static bool EsNull(JsonElement j, string campo) => j.GetProperty(campo).ValueKind == JsonValueKind.Null;

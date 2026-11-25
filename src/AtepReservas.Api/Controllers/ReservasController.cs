@@ -18,14 +18,15 @@ public class ReservasController : ControllerBase
 
     /// <summary>
     /// Calendario. GET /api/reservas?desde=2027-03-01&amp;hasta=2027-04-01&amp;idEspacio=1&amp;estado=Confirmada
-    /// (todos los filtros son opcionales)
+    /// (todos los filtros son opcionales; idTurnoFijo trae las semanas de un turno fijo)
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<ReservaResumenDto>>> Listar(
         [FromQuery] DateTime? desde, [FromQuery] DateTime? hasta,
-        [FromQuery] int? idEspacio, [FromQuery] int? idCliente, [FromQuery] EstadoReserva? estado)
+        [FromQuery] int? idEspacio, [FromQuery] int? idCliente, [FromQuery] EstadoReserva? estado,
+        [FromQuery] int? idTurnoFijo)
     {
-        return await _servicio.ListarAsync(desde, hasta, idEspacio, idCliente, estado);
+        return await _servicio.ListarAsync(desde, hasta, idEspacio, idCliente, estado, idTurnoFijo);
     }
 
     /// <summary>GET /api/reservas/1 → la reserva con sus espacios, pagos, seña y saldo.</summary>
@@ -50,7 +51,10 @@ public class ReservasController : ControllerBase
         return await _servicio.ModificarAsync(id, dto);
     }
 
-    /// <summary>DELETE /api/reservas/1 → cancela (RN10): no la borra, la pasa a Cancelada.</summary>
+    /// <summary>
+    /// DELETE /api/reservas/1 → cancela (RN10): no la borra, la pasa a Cancelada. También sirve para
+    /// la semana de un turno fijo en la que avisan que no van (RN22).
+    /// </summary>
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ReservaDetalleDto>> Cancelar(int id)
     {

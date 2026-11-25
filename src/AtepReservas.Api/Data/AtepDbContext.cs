@@ -5,7 +5,7 @@ namespace AtepReservas.Api.Data;
 
 /// <summary>
 /// Puente entre las clases de C# y las tablas de MySQL. Las tablas las crea
-/// database/01_esquema.sql (DER v5): acá solo se le explica a EF Core cómo se corresponden.
+/// database/01_esquema.sql (DER v6): acá solo se le explica a EF Core cómo se corresponden.
 /// </summary>
 public class AtepDbContext : DbContext
 {
@@ -17,6 +17,7 @@ public class AtepDbContext : DbContext
     public DbSet<Espacio> Espacios => Set<Espacio>();
     public DbSet<Tarifa> Tarifas => Set<Tarifa>();
     public DbSet<TipoPago> TiposPago => Set<TipoPago>();
+    public DbSet<TurnoFijo> TurnosFijos => Set<TurnoFijo>();
     public DbSet<Reserva> Reservas => Set<Reserva>();
     public DbSet<ReservaEspacio> ReservasEspacios => Set<ReservaEspacio>();
     public DbSet<Pago> Pagos => Set<Pago>();
@@ -54,10 +55,19 @@ public class AtepDbContext : DbContext
 
         modelo.Entity<TipoPago>().HasKey(t => t.IdTipoPago);
 
+        modelo.Entity<TurnoFijo>(e =>
+        {
+            e.HasKey(t => t.IdTurnoFijo);
+            e.HasOne(t => t.Cliente).WithMany().HasForeignKey(t => t.IdCliente);
+            e.HasOne(t => t.Espacio).WithMany().HasForeignKey(t => t.IdEspacio);
+        });
+
         modelo.Entity<Reserva>(e =>
         {
             e.HasKey(r => r.IdReserva);
             e.HasOne(r => r.Cliente).WithMany(c => c.Reservas).HasForeignKey(r => r.IdCliente);
+            // RN22: cada semana de un turno fijo es una reserva que apunta a su turno.
+            e.HasOne(r => r.TurnoFijo).WithMany(t => t.Reservas).HasForeignKey(r => r.IdTurnoFijo);
         });
 
         modelo.Entity<ReservaEspacio>(e =>

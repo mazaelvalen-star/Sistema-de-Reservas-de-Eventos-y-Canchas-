@@ -24,7 +24,8 @@ Content-Type: application/json
   "cantidadInvitados": 30
 }
 
-### 4. Seña de la reserva del paso 3 (id 2), pagada en dos partes → pasa a Confirmada (RN05 + RN15)
+### 4. Seña de la reserva del paso 3 (id 2): el mínimo es $50.000 y Juan elige dejar $75.000, en dos partes
+###    → pasa a Confirmada (RN05 + RN15)
 POST {{api}}/reservas/2/pagos
 Content-Type: application/json
 
@@ -70,7 +71,7 @@ Content-Type: application/json
   "detalles": [ { "idTipoPago": 2, "monto": 100000 } ]
 }
 
-### 8. Detalle: espacios, pagos con sus detalles, seña requerida y saldo
+### 8. Detalle: espacios, pagos con sus detalles, seña mínima y saldo
 GET {{api}}/reservas/2
 
 ### 9. Calendario de abril de 2027
@@ -306,3 +307,65 @@ Content-Type: application/json
 
 ### 38. El ingreso para decorar ocupa el espacio (RN17): la mañana del evento de ejemplo, el salón no figura libre
 GET {{api}}/espacios/disponibles?inicio=2027-03-12T12:00:00&fin=2027-03-12T15:00:00&tipo=Salon
+
+
+# ======================================================================
+#  HORAS ENTERAS, ACTIVIDADES DEL GREMIO Y TURNOS FIJOS (respuestas del 25/11/2026)
+# ======================================================================
+
+### 39. Cancha por una hora y media → 422 RN23: las canchas se reservan por horas enteras
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 2,
+  "idsEspacios": [6],
+  "fechaHoraInicio": "2027-04-12T18:00:00",
+  "fechaHoraFin": "2027-04-12T19:30:00"
+}
+
+### 40. Reunión del gremio en el salón → 201 Confirmada, sin cargo: monto 0 y sin seña (RN24). Le toca el id 5
+POST {{api}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": 1,
+  "idsEspacios": [1],
+  "fechaHoraInicio": "2027-04-14T18:00:00",
+  "fechaHoraFin": "2027-04-14T22:00:00",
+  "tipoEvento": "Reunión del gremio",
+  "sinCargo": true
+}
+
+### 41. Turno fijo: Juan juega al pádel los martes de 21 a 22 → 201 (RN22)
+###     Se reservan los martes de las próximas 52 semanas, contando desde hoy. La primera semana es la reserva 6
+POST {{api}}/turnos-fijos
+Content-Type: application/json
+
+{
+  "idCliente": 2,
+  "idEspacio": 7,
+  "primerInicio": "2027-04-13T21:00:00",
+  "primerFin": "2027-04-13T22:00:00"
+}
+
+### 42. Las semanas del turno: cada una es una reserva de cancha, confirmada y a $25.000
+GET {{api}}/reservas?idTurnoFijo=1
+
+### 43. El primer martes no van: se cancela esa semana y no pagan nada
+DELETE {{api}}/reservas/6
+
+### 44. El martes siguiente juegan y pagan ese turno
+POST {{api}}/reservas/7/pagos
+Content-Type: application/json
+
+{
+  "concepto": "Turno fijo",
+  "detalles": [ { "idTipoPago": 1, "monto": 25000 } ]
+}
+
+### 45. Dejan de venir: baja del turno. Se cancelan las semanas que vienen, salvo la que ya pagaron
+DELETE {{api}}/turnos-fijos/1
+
+### 46. Los turnos fijos, también los dados de baja
+GET {{api}}/turnos-fijos?soloActivos=false

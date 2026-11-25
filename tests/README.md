@@ -2,8 +2,8 @@
 
 | Prueba | Qué verifica | Dónde está |
 | --- | --- | --- |
-| Automáticas de la API | 98 casos que recorren cada requisito y cada regla de negocio por HTTP. | `PruebasApi/` |
-| Restricciones de la base (MAN-02) | 16 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
+| Automáticas de la API | 118 casos que recorren cada requisito y cada regla de negocio por HTTP. | `PruebasApi/` |
+| Restricciones de la base (MAN-02) | 20 intentos de guardar o borrar datos que la base no debe permitir. | `restricciones.sql` |
 | Vencimiento de reservas (MAN-01) | Que una reserva pendiente que no recibe la seña en 72 horas pasa a `Vencida` y ya no acepta pagos (C12). | Se hace a mano, más abajo. |
 
 Todas arrancan con **la base recién creada**: los casos dependen de los datos iniciales (los clientes
@@ -29,7 +29,7 @@ Todas arrancan con **la base recién creada**: los casos dependen de los datos i
 
 Cada caso ocupa un renglón, con `OK` o `FALLA`. Cuando un caso falla, debajo aparece el pedido, el
 código que devolvió la API y la respuesta. La última línea es el resumen, que tiene que decir
-`Resultado: 98 de 98 casos aprobados.`
+`Resultado: 118 de 118 casos aprobados.`
 
 Si la base no está recién creada, el programa avisa y no corre nada. Si la API está en otra dirección,
 se le pasa al final: `dotnet run --project tests/PruebasApi -- http://localhost:5000`.
@@ -95,7 +95,7 @@ canchas no llevan seña y nacen confirmadas (RN20). Por eso los choques (RN01) s
 
 | Caso | Verifica | Qué se prueba | Respuesta esperada |
 | --- | --- | --- | --- |
-| RES-01 | RN05 | Reservar el Quincho 1: queda pendiente, con tarifa de no afiliado y seña del 50 % | 201 |
+| RES-01 | RN05 | Reservar el Quincho 1: queda pendiente, con tarifa de no afiliado y una seña mínima de $50.000 | 201 |
 | RES-02 | RN06 | Sin seña no se guarda la fecha: otra reserva del Quincho 1 que se pisa (22 a 02) también entra | 201 |
 | RES-03 | RN06 | Las reservas pendientes no ocupan: los dos quinchos siguen libres de 20 a 23 | 200 |
 | RES-04 | RN20 | Cancha de fútbol de 18 a 20: no lleva seña, queda confirmada y se cobra por hora | 201 |
@@ -108,7 +108,7 @@ canchas no llevan seña y nacen confirmadas (RN20). Por eso los choques (RN01) s
 | RES-11 | RF09 | El mismo espacio dos veces en la reserva | 400 |
 | RES-12 | RF09 | Cliente que no existe | 404 |
 | RES-13 | RF09 | Espacio que no existe | 404 |
-| RES-14 | RN07 | Cantina y cancha de básquet (21 a 04): la cantina por evento, la cancha por hora, y la seña sobre el total | 201 |
+| RES-14 | RN07 | Cantina y cancha de básquet (21 a 04): la cantina por evento, la cancha por hora, y una sola seña para todo | 201 |
 | RES-15 | RN17 | Ingreso para decorar posterior al inicio del evento | 400 |
 | RES-16 | RF01 | Reservar un espacio dado de baja | 422 |
 | RES-17 | RN17 | El ingreso para decorar ocupa el espacio: el salón no está libre la mañana del evento de los datos iniciales | 200 |
@@ -120,6 +120,10 @@ canchas no llevan seña y nacen confirmadas (RN20). Por eso los choques (RN01) s
 | RES-23 | RN07 | Alargar la cancha a tres horas (17 a 20): el monto pasa a $150.000 | 200 |
 | RES-24 | RN03 | Modificar a más invitados que la capacidad | 422 |
 | RES-25 | RF12 | Reserva que no existe | 404 |
+| RES-26 | RN23 | Cancha por una hora y media: las canchas se reservan por horas enteras | 422 |
+| RES-27 | RN23 | Modificar la cancha a una hora y media | 422 |
+| RES-28 | RN24 | Actividad del gremio: sin cargo, sin seña y confirmada | 201 |
+| RES-29 | RN24 | La actividad del gremio ocupa el quincho como cualquier reserva | 409 |
 
 ### Pagos
 
@@ -138,7 +142,7 @@ fecha la primera que deja la seña, y la seña de la otra se rechaza sin registr
 | PAG-08 | RF16 | Pagar cuando ya no queda saldo | 422 |
 | PAG-09 | RN06 | Sin seña entran dos reservas del Quincho 1 que se pisan: la de María, de 20 a 23... | 201 |
 | PAG-10 | RN06 | ...y la de Juan, de 21 a 24 | 201 |
-| PAG-11 | RN05 | María deja la seña ($60.000): su reserva queda confirmada | 201 |
+| PAG-11 | RN15 | María elige dejar $60.000 de seña (el mínimo es $50.000): su reserva queda confirmada | 201 |
 | PAG-12 | RN06 | La seña de Juan llega tarde: el horario ya está confirmado para María | 409 |
 | PAG-13 | RN06 | El pago rechazado no quedó registrado: la reserva de Juan sigue pendiente y sin pagos | 200 |
 
@@ -152,7 +156,7 @@ fecha la primera que deja la seña, y la seña de la otra se rechaza sin registr
 | CAN-04 | RF13 | Modificar una reserva cancelada | 409 |
 | CAN-05 | RF16 | Registrar un pago en una reserva cancelada | 409 |
 | CAN-06 | RN10 | El horario cancelado quedó libre: se puede volver a reservar la cancha de 20 a 21 | 201 |
-| CAN-07 | RN09 | Cancelar una reserva con seña: el complejo se queda con la seña y el pago sigue registrado | 200 |
+| CAN-07 | RN09 | Cancelar una reserva con seña: pierde la seña que dejó y el pago sigue registrado | 200 |
 | CAN-08 | RN10 | Con el Quincho 1 libre, ahora sí entra la seña de Juan | 201 |
 
 ### Tarifas
@@ -190,6 +194,31 @@ todo pasan al precio nuevo; las pagadas conservan el suyo.
 | MED-06 | RF16 | Pagar con un medio dado de baja | 422 |
 | MED-07 | RF19 | Volver a activarlo | 200 |
 | MED-08 | RF16 | Ahora sí se puede pagar con ese medio | 201 |
+
+### Turnos fijos
+
+Juan juega al pádel todas las semanas. El turno reserva las semanas que empiezan antes del horizonte:
+hoy más 52 semanas, que es `SemanasTurnoFijo` en `appsettings.json`. Si se cambia ese número, hay que
+cambiarlo también en `Program.cs`, donde TUR-01 y TUR-02 calculan cuántas semanas esperar.
+
+| Caso | Verifica | Qué se prueba | Respuesta esperada |
+| --- | --- | --- | --- |
+| TUR-01 | RN22 | Turno fijo de pádel: reserva el mismo día y horario todas las semanas | 201 |
+| TUR-02 | RN22 | Cada semana es una reserva de cancha: confirmada, sin seña y a $25.000 | 200 |
+| TUR-03 | RN22 | Dentro de un mes, la cancha de pádel sigue ocupada en ese horario | 200 |
+| TUR-04 | RN01 | Otra reserva en una semana del turno: rechazada | 409 |
+| TUR-05 | RN22 | Turno fijo en un espacio que no es cancha | 422 |
+| TUR-06 | RN23 | Turno fijo de una hora y media | 422 |
+| TUR-07 | C17 | Una de las semanas ya está ocupada: el turno no se crea y dice con qué choca | 409 |
+| TUR-08 | RN22 | Una semana no van: se cancela esa reserva y no pagan nada | 200 |
+| TUR-09 | RN22 | Se paga cada vez que juegan | 201 |
+| TUR-10 | RN22 | Dejan de venir: la baja cancela las semanas que vienen, salvo la que ya pagaron | 200 |
+| TUR-11 | RN22 | Después de la baja, la cancha de pádel queda libre en ese horario | 200 |
+| TUR-12 | C16 | La semana que ya pagaron sigue confirmada | 200 |
+| TUR-13 | RF23 | Dar de baja un turno que ya está dado de baja | 409 |
+| TUR-14 | RF23 | Turnos fijos activos: no queda ninguno | 200 |
+| TUR-15 | RF23 | Con los dados de baja está el de pádel, con su fecha de baja | 200 |
+| TUR-16 | RF23 | Turno fijo que no existe | 404 |
 
 ### Operaciones simultáneas
 
@@ -239,12 +268,13 @@ Con la base recién creada, corré el script desde Workbench o desde la consola:
 mysql -u root -p --table -e "source tests/restricciones.sql"
 ```
 
-Muestra una tabla con los 16 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
-`16 de 16 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
+Muestra una tabla con los 20 casos. Todos tienen que decir `OK: rechazado`, y el resumen,
+`20 de 20 casos rechazados por la base`. En la consola de Windows las tildes de esa tabla pueden
 verse mal; en Workbench se ven bien.
 
-Los códigos van de R01 a R20 con saltos: R06, R07, R08 y R19 probaban perfiles, permisos y usuarios,
-que se quitaron con el DER v5. Los códigos no se reutilizan.
+Los códigos van de R01 a R24 con saltos: R06, R07, R08 y R19 probaban perfiles, permisos y usuarios,
+que se quitaron con el DER v5. Los códigos no se reutilizan. R21 a R24 prueban lo que sumó el DER v6:
+los turnos fijos y las reservas sin cargo.
 
 El script no deja nada guardado, pero después hay que recrear la base: los intentos fallidos hacen
 avanzar los id automáticos.
@@ -255,4 +285,4 @@ Anotá cada corrida completa, sobre todo antes de una entrega.
 
 | Fecha | Quién | Automáticas | MAN-01 | MAN-02 | Observaciones |
 | --- | --- | --- | --- | --- | --- |
-|  |  | de 98 |  | de 16 |  |
+|  |  | de 118 |  | de 20 |  |
