@@ -31,7 +31,8 @@ Cada caso ocupa un renglón, con `OK` o `FALLA`. Cuando un caso falla, debajo ap
 código que devolvió la API y la respuesta. La última línea es el resumen, que tiene que decir
 `Resultado: 118 de 118 casos aprobados.`
 
-Si la base no está recién creada, el programa avisa y no corre nada. Si la API está en otra dirección,
+Si la base no está recién creada, el programa avisa y no corre nada. También avisa si la API contesta
+con un error: casi siempre es una base de una versión anterior, a la que le falta una tabla nueva. Si la API está en otra dirección,
 se le pasa al final: `dotnet run --project tests/PruebasApi -- http://localhost:5000`.
 
 Durante el caso SIM-06, en la consola de la API pueden aparecer líneas `fail:` con el texto

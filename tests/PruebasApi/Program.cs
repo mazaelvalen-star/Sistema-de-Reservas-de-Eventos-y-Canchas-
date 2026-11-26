@@ -48,6 +48,16 @@ try
         return 2;
     }
 }
+catch (HttpRequestException e) when (e.StatusCode is not null)
+{
+    // La API contestó, pero con un error. Casi siempre es una base de una versión anterior, a la que le
+    // falta una tabla o una columna nueva.
+    Console.WriteLine($"La API está en {url}, pero contestó con el error {(int)e.StatusCode}.");
+    Console.WriteLine("Lo más probable es que la base sea de una versión anterior. Volvé a correr");
+    Console.WriteLine("database/01_esquema.sql y database/02_datos_iniciales.sql, y después corré las pruebas de nuevo.");
+    Console.WriteLine("El detalle del error está en la terminal de la API.");
+    return 2;
+}
 catch (HttpRequestException)
 {
     Console.WriteLine($"No se pudo conectar con la API en {url}.");
