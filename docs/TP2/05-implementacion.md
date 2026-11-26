@@ -2,40 +2,56 @@
 
 ## 5.1. Descripción de la implementación
 
-Se implementó el patrón de diseño **Strategy (Estrategia)** en el sistema de reservas del Complejo ATEP.
+Se implementó el patrón de diseño Strategy (Estrategia) en el Sistema de Reservas del Complejo ATEP.
 
-El objetivo es separar los diferentes algoritmos de cálculo de importes, permitiendo seleccionar una estrategia según el tipo de reserva, sin concentrar todas las operaciones en una única clase.
+El objetivo es separar los diferentes algoritmos de cálculo de importes, permitiendo seleccionar una estrategia según el tipo de espacio reservado.
 
 ## 5.2. Archivos implementados
 
-Se incorporaron los siguientes archivos en la carpeta `Services` del proyecto:
+Se incorporaron los siguientes archivos dentro de la carpeta Services:
 
 - **IEstrategiaCalculo.cs:** define la interfaz común que deben implementar las estrategias de cálculo.
 - **CalculoPorHora.cs:** implementa el cálculo multiplicando la tarifa por la cantidad de horas.
 - **CalculoPorEvento.cs:** implementa el cálculo utilizando una tarifa fija por evento.
-- **CalculoDeReserva.cs:** centraliza la selección de la estrategia, ejecuta el cálculo y obtiene el importe total.
+- **CalculoDeReserva.cs:** selecciona y utiliza la estrategia correspondiente para obtener el importe total.
 
-## 5.3. Funcionamiento del patrón
+## 5.3. Funcionamiento
 
-El funcionamiento se desarrolla de la siguiente manera:
+El sistema utiliza dos modalidades de cálculo:
+
+- Las canchas se cobran según la cantidad de horas reservadas.
+- Los salones, quinchos y demás espacios destinados a eventos se cobran por evento.
+
+El funcionamiento es el siguiente:
 
 1. El sistema recibe los espacios seleccionados, las tarifas y el horario de la reserva.
 2. Calcula la duración de la reserva.
 3. Busca la tarifa correspondiente a cada espacio.
-4. Selecciona la estrategia de cálculo correspondiente.
-5. Ejecuta el método `Calcular()`.
-6. Suma los importes obtenidos y devuelve el total redondeado a dos decimales.
+4. Selecciona la estrategia de cálculo.
+5. Ejecuta el método Calcular().
+6. Suma los importes y devuelve el total correspondiente.
 
-## 5.4. Ventajas de la implementación
+## 5.4. Integración con el sistema
 
-- Permite separar las responsabilidades.
-- Facilita la incorporación de nuevas estrategias de cálculo.
-- Evita concentrar diferentes algoritmos en una sola clase.
-- Favorece el mantenimiento y la reutilización del código.
-- Aplica el principio Abierto/Cerrado (OCP).
+La clase ReservaService utiliza CalculoDeReserva en diferentes operaciones:
 
-## 5.5. Verificación
+- Crear una reserva.
+- Modificar una reserva.
+- Actualizar los importes cuando se modifican las tarifas.
 
-La implementación se encuentra incorporada en el proyecto.
+Esto permite reutilizar la misma lógica de cálculo y mantener criterios consistentes en las distintas operaciones.
 
-Queda pendiente completar las pruebas de funcionamiento y verificar los resultados de los cálculos mediante la ejecución del sistema.
+## 5.5. Beneficios obtenidos
+
+- Separación de responsabilidades.
+- Reutilización del código.
+- Menor duplicación de lógica.
+- Facilidad para incorporar nuevas estrategias.
+- Mayor facilidad de mantenimiento.
+- Aplicación del principio Abierto/Cerrado (OCP).
+
+## 5.6. Verificación
+
+La implementación del patrón se incorporó al código fuente del proyecto.
+
+Se requiere completar las pruebas de compilación y funcionamiento para verificar que ambas estrategias produzcan los resultados esperados.
