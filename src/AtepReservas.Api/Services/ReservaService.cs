@@ -17,21 +17,28 @@ public class ReservaService
     private readonly AtepDbContext _db;
     private readonly ReglasOptions _reglas;
     private readonly EspacioService _espacios;
+    private readonly TurnoFijoService _turnos;
 
-    public ReservaService(AtepDbContext db, IOptions<ReglasOptions> reglas, EspacioService espacios)
+    public ReservaService(AtepDbContext db, IOptions<ReglasOptions> reglas, EspacioService espacios,
+        TurnoFijoService turnos)
     {
         _db = db;
         _reglas = reglas.Value;
         _espacios = espacios;
+        _turnos = turnos;
     }
 
     // ================================================================== consultas
 
-    /// <summary>Calendario: reservas que se pisan con la ventana [desde, hasta), con filtros opcionales.</summary>
+    /// <summary>
+    /// Calendario: reservas que se pisan con la ventana [desde, hasta), con filtros opcionales.
+    /// idTurnoFijo trae las semanas de un turno fijo (RN22).
+    /// </summary>
     public async Task<List<ReservaResumenDto>> ListarAsync(DateTime? desde, DateTime? hasta,
-        int? idEspacio, int? idCliente, EstadoReserva? estado)
+        int? idEspacio, int? idCliente, EstadoReserva? estado, int? idTurnoFijo = null)
     {
         await MarcarVencidasAsync();
+        await _turnos.ExtenderAsync();
 
         IQueryable<Reserva> consulta = _db.Reservas.AsNoTracking();
         if (desde is not null)
@@ -44,6 +51,8 @@ public class ReservaService
             consulta = consulta.Where(r => r.IdCliente == idCliente.Value);
         if (estado is not null)
             consulta = consulta.Where(r => r.Estado == estado.Value);
+        if (idTurnoFijo is not null)
+            consulta = consulta.Where(r => r.IdTurnoFijo == idTurnoFijo.Value);
 
         // Include = traer también los datos relacionados (JOIN), para poder armar el DTO.
         var reservas = await consulta
@@ -59,7 +68,8 @@ public class ReservaService
                 r.FechaHoraFin,
                 r.Estado,
                 r.MontoTotal,
-                r.Espacios.Select(re => re.Espacio.Nombre).ToList()))
+                r.Espacios.Select(re => re.Espacio.Nombre).ToList(),
+                r.IdTurnoFijo))
             .ToList();
     }
 
@@ -99,6 +109,7 @@ public class ReservaService
         var condicion = cliente.EsAfiliado ? CondicionTarifaria.Afiliado : CondicionTarifaria.NoAfiliado;
 
         await MarcarVencidasAsync();
+        await _turnos.ExtenderAsync();   // los turnos fijos tienen que tener creadas sus semanas (RN22)
 
         // Transacción: o se guarda la reserva completa con sus renglones, o no se guarda nada.
         // Si algo de acá abajo lanza una excepción, al salir del método la transacción
@@ -109,18 +120,26 @@ public class ReservaService
         var espacios = await _db.Espacios.Where(e => idsEspacios.Contains(e.IdEspacio)).ToListAsync();
         ValidarEspacios(idsEspacios, espacios);
         ValidarCapacidad(dto.CantidadInvitados, espacios);                                       // RN03
+        CalculoDeReserva.ValidarHorasEnteras(espacios, inicio, fin);                              // RN23
         // RN01 y RN17: el horario que ocupa empieza en el ingreso para decorar, si lo hay.
         await VerificarSuperposicionAsync(espacios, dto.IngresoDecoracion ?? inicio, fin, excluirReserva: null);
 
-        // RN07: cada espacio se cobra con su tarifa para la condición del cliente; las canchas, por hora.
-        var tarifas = await TarifasAsync(idsEspacios, condicion);
-        var sinTarifa = espacios.Where(e => tarifas.All(t => t.IdEspacio != e.IdEspacio)).Select(e => e.Nombre).ToList();
-        if (sinTarifa.Count > 0)
+        // RN24: una actividad del gremio (u otra cortesía) no se cobra, así que no necesita tarifa.
+        // SUPUESTO C14: se anota a nombre de la persona del gremio que la organiza, cargada como cliente.
+        decimal monto = 0;
+        if (!dto.SinCargo)
         {
-            var paraQuien = condicion == CondicionTarifaria.Afiliado ? "afiliados" : "no afiliados";
-            throw new ReglaNegocioException("RN07",
-                $"No hay tarifa para {paraQuien} en: {string.Join(", ", sinTarifa)}. Hay que cargarla antes de reservar.",
-                StatusCodes.Status422UnprocessableEntity);
+            // RN07: cada espacio se cobra con su tarifa para la condición del cliente; las canchas, por hora.
+            var tarifas = await TarifasAsync(idsEspacios, condicion);
+            var sinTarifa = espacios.Where(e => tarifas.All(t => t.IdEspacio != e.IdEspacio)).Select(e => e.Nombre).ToList();
+            if (sinTarifa.Count > 0)
+            {
+                var paraQuien = condicion == CondicionTarifaria.Afiliado ? "afiliados" : "no afiliados";
+                throw new ReglaNegocioException("RN07",
+                    $"No hay tarifa para {paraQuien} en: {string.Join(", ", sinTarifa)}. Hay que cargarla antes de reservar.",
+                    StatusCodes.Status422UnprocessableEntity);
+            }
+            monto = CalculoDeReserva.Monto(espacios, tarifas, inicio, fin);
         }
 
         var reserva = new Reserva
@@ -130,10 +149,12 @@ public class ReservaService
             FechaHoraFin = fin,
             // RN21: este monto sigue la tarifa vigente hasta que la reserva se paga del todo
             // (lo actualiza ActualizarMontosAsync cuando cambia una tarifa).
-            MontoTotal = CalculoDeReserva.Monto(espacios, tarifas, inicio, fin),
+            MontoTotal = monto,
+            SinCargo = dto.SinCargo,
             // RN05: una reserva que lleva seña nace pendiente y la confirma el pago de la seña.
             // RN20: las canchas no llevan seña: una reserva solo de canchas queda confirmada al registrarla.
-            Estado = CalculoDeReserva.LlevaSenia(espacios) ? EstadoReserva.Pendiente : EstadoReserva.Confirmada,
+            // RN24: una reserva sin cargo tampoco lleva seña.
+            Estado = !dto.SinCargo && CalculoDeReserva.LlevaSenia(espacios) ? EstadoReserva.Pendiente : EstadoReserva.Confirmada,
             FechaRegistro = ahora,                      // desde acá se cuenta el plazo de la seña (C12)
         };
         CopiarDatosDelEvento(dto, reserva);
@@ -161,6 +182,7 @@ public class ReservaService
         ValidarHorario(inicio, fin, dto.IngresoDecoracion, ahora);
 
         await MarcarVencidasAsync();
+        await _turnos.ExtenderAsync();
 
         await using var transaccion = await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
@@ -174,6 +196,7 @@ public class ReservaService
         var idsEspacios = espacios.Select(e => e.IdEspacio).OrderBy(x => x).ToList();
         await BloquearEspaciosAsync(idsEspacios);
         ValidarCapacidad(dto.CantidadInvitados, espacios);                                       // RN03
+        CalculoDeReserva.ValidarHorasEnteras(espacios, inicio, fin);                              // RN23
         await VerificarSuperposicionAsync(espacios, dto.IngresoDecoracion ?? inicio, fin, excluirReserva: id); // RN01, RN17
 
         reserva.FechaHoraInicio = inicio;
@@ -183,9 +206,9 @@ public class ReservaService
         // RN07 y RN21: si todavía no está pagada del todo, el monto se vuelve a calcular con las
         // tarifas vigentes y el horario nuevo (en las canchas cambia con las horas).
         // SUPUESTO C10: nunca queda por debajo de lo que ya se pagó. Si falta alguna tarifa, el
-        // monto queda como estaba.
+        // monto queda como estaba. Una reserva sin cargo sigue sin cargo (RN24).
         var pagado = await PagadoAsync(id);
-        if (pagado < reserva.MontoTotal)
+        if (!reserva.SinCargo && pagado < reserva.MontoTotal)
         {
             var cliente = await _db.Clientes.FindAsync(reserva.IdCliente);
             var condicion = cliente!.EsAfiliado ? CondicionTarifaria.Afiliado : CondicionTarifaria.NoAfiliado;
@@ -204,10 +227,11 @@ public class ReservaService
 
     /// <summary>
     /// SUPUESTO RN10: la reserva no se borra; pasa a Cancelada y su horario queda libre.
-    /// RN09: el complejo se queda con la seña. Por eso no se calcula ninguna devolución y los
-    /// pagos registrados quedan como están.
-    /// SUPUESTO C13: si ya se había pagado más que la seña, tampoco se registra la devolución de
-    /// la diferencia: el complejo la resuelve por fuera del sistema.
+    /// RN09: quien cancela pierde la seña, sea cual sea el monto que eligió dejar (RN15). Por eso no
+    /// se calcula ninguna devolución y los pagos registrados quedan como están.
+    /// SUPUESTO C13: si además de la seña ya se había pagado el saldo, tampoco se registra su
+    /// devolución: el complejo la resuelve por fuera del sistema.
+    /// Una semana de un turno fijo se cancela igual: si avisan que no van, no pagan nada (RN22).
     /// </summary>
     public async Task<ReservaDetalleDto> CancelarAsync(int id)
     {
@@ -261,13 +285,14 @@ public class ReservaService
         if (fin <= inicio)
             throw new ReglaNegocioException("HORARIO", "El fin tiene que ser posterior al inicio.",
                 StatusCodes.Status400BadRequest);
-        // SUPUESTO C5: no se cargan reservas con fecha pasada.
+        // C5 (confirmado): no se cargan reservas con fecha pasada. Del cuaderno del complejo se pasan
+        // solo las reservas que vienen.
         if (inicio <= ahora)
             throw new ReglaNegocioException("HORARIO", "No se puede reservar en una fecha que ya pasó.",
                 StatusCodes.Status400BadRequest);
         // RN17: el ingreso para decorar ocupa el espacio desde esa hora (ver ConsultasReserva).
-        // Está confirmado para los viernes. SUPUESTO C1: se acepta cualquier día, siempre que
-        // sea antes del inicio.
+        // C1 (confirmado): vale cualquier día, siempre que sea antes del inicio. Los eventos suelen
+        // ser viernes, sábados y domingos.
         if (ingresoDecoracion is not null && ingresoDecoracion > inicio)
             throw new ReglaNegocioException("RN17", "El ingreso para decorar tiene que ser antes del inicio del evento.",
                 StatusCodes.Status400BadRequest);
@@ -403,6 +428,7 @@ public class ReservaService
         var reservas = await _db.Reservas
             .Include(r => r.Espacios).ThenInclude(re => re.Espacio)
             .Where(r => (r.Estado == EstadoReserva.Pendiente || r.Estado == EstadoReserva.Confirmada)
+                        && !r.SinCargo                                    // RN24: siguen sin cargo
                         && r.FechaHoraInicio > ahora
                         && r.Cliente.EsAfiliado == esAfiliado
                         && r.Espacios.Any(re => re.IdEspacio == idEspacio))
@@ -475,12 +501,16 @@ public class ReservaService
             r.TipoEvento,
             r.CantidadInvitados,
             r.DetalleArmado,
+            r.IdTurnoFijo,
             r.Estado,
             r.FechaRegistro,
             r.Estado == EstadoReserva.Pendiente ? _reglas.VencimientoDe(r.FechaRegistro) : null,
+            r.SinCargo,
             r.MontoTotal,
-            // RN15, y RN20: una reserva solo de canchas no lleva seña.
-            CalculoDeReserva.LlevaSenia(r.Espacios.Select(re => re.Espacio)) ? _reglas.CalcularSenia(r.MontoTotal) : 0,
+            // RN15: lo mínimo para confirmarla. RN20 y RN24: una reserva solo de canchas, o sin
+            // cargo, no lleva seña.
+            !r.SinCargo && CalculoDeReserva.LlevaSenia(r.Espacios.Select(re => re.Espacio))
+                ? _reglas.CalcularSenia(r.MontoTotal) : 0,
             pagado,
             r.MontoTotal - pagado,
             r.Espacios.Select(re => new ReservaEspacioDto(re.IdEspacio, re.Espacio.Nombre, re.Espacio.Tipo)).ToList(),

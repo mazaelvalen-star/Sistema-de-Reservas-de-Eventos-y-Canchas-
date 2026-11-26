@@ -7,8 +7,11 @@ complejo responde otra cosa.
 Lo que sí confirmó el complejo en la entrevista del 16/10/2026 son las reglas RN01, RN05, RN08, RN15,
 RN16 y RN17. El 20/11/2026 confirmó además que no hay sitio web: el sistema lo usa una sola persona de
 la administración, en una computadora. El 23/11/2026 respondió las preguntas de esta página: de ahí
-salen las reglas RN06, RN07, RN09, RN20, RN21 y RN22, y la confirmación de S2 y S3. Lo confirmado y lo
-que quedó sin efecto está al final, en [Confirmados](#confirmados) y [Descartados](#descartados).
+salen las reglas RN06, RN07, RN09, RN20, RN21 y RN22, y la confirmación de S2 y S3. El 25/11/2026
+respondió las siguientes: cómo funcionan los turnos fijos (RN22), que la seña es un mínimo que el
+cliente decide superar (RN15), que las canchas se reservan por horas enteras (RN23) y que las
+actividades del gremio no se cobran (RN24). Lo confirmado y lo que quedó sin efecto está al final, en
+[Confirmados](#confirmados) y [Descartados](#descartados).
 
 ## Cómo se usa
 
@@ -40,7 +43,8 @@ Son las reglas que en el relevamiento figuran como «Pendiente».
 ## Supuestos del modelo de datos
 
 Vienen del DER, con el mismo código. S1 quedó resuelto en la v2, S7 se descartó en la v5, S2 y S3 los
-confirmó el complejo y S5 se descartó el 23/11/2026.
+confirmó el complejo y S5 se descartó el 23/11/2026: hay turnos fijos, y el DER v6 los suma con la tabla
+`turno_fijo`.
 
 | Código | Qué hace hoy el sistema | Dónde está | Si el complejo dice otra cosa | Costo |
 | --- | --- | --- | --- | --- |
@@ -50,20 +54,20 @@ confirmó el complejo y S5 se descartó el 23/11/2026.
 ## Supuestos del código
 
 Aparecieron al programar: son decisiones que el relevamiento no cubre. C2, C4 y C7 se resolvieron el
-23/11/2026; C9 a C13 aparecieron al programar esas respuestas.
+23/11/2026, y C1, C5, C9 y C11, el 25/11/2026. C14 a C17 aparecieron al programar esas respuestas.
 
 | Código | Qué hace hoy el sistema | Dónde está | Si el complejo dice otra cosa | Costo |
 | --- | --- | --- | --- | --- |
-| C1 | El ingreso para decorar (RN17) se acepta cualquier día, siempre que sea antes del inicio del evento. Que ocupa el espacio ya está confirmado. | `ReservaService.ValidarHorario` | Si vale solo cuando el evento es un viernes, se valida el día de la semana. | Bajo |
-| C3 | La seña se puede completar en varios pagos. La reserva se confirma cuando lo pagado alcanza la seña. | `PagoService.RegistrarAsync` | Se exige que el primer pago cubra la seña entera. | Bajo |
-| C5 | No se cargan reservas con fecha pasada. El complejo confirmó que hay que pasar al sistema las reservas que ya tiene: las que vienen se cargan como cualquier otra. | `ReservaService.ValidarHorario` | Si también hay que pasar las que ya pasaron, se permite la fecha pasada en esa carga, junto con la fecha real de sus pagos. | Medio |
+| C3 | La seña se puede completar en varios pagos. La reserva se confirma cuando lo pagado alcanza la seña mínima. | `PagoService.RegistrarAsync` | Se exige que el primer pago cubra la seña mínima. | Bajo |
 | C6 | Los espacios de una reserva no se cambian: se cancela y se registra otra. | `ReservaService.ModificarAsync` | Se permite cambiarlos y se recalcula el monto. | Medio |
 | C8 | El domicilio es obligatorio para registrar un cliente: calle, número y localidad. | `ClienteGuardarDto`; columna `cliente.id_domicilio` | Se vuelve opcional: la columna pasa a aceptar NULL. | Medio |
-| C9 | Si una reserva junta canchas con otros espacios, lleva seña y se calcula sobre el total, canchas incluidas. | `CalculoDeReserva.LlevaSenia`; `ReservaService.ADetalle` | Si la seña va solo sobre lo que no es cancha, se calcula sobre esa parte del monto. | Medio |
 | C10 | Cuando un monto se recalcula (RN21), nunca queda por debajo de lo que ya se pagó, y solo se recalculan las reservas que todavía no empezaron. | `ReservaService.ActualizarMontosAsync` y `ModificarAsync` | Se cambia la condición en esos dos métodos. | Bajo |
-| C11 | Una fracción de hora de cancha se cobra en proporción: una hora y media cuesta 1,5 veces la tarifa. | `CalculoDeReserva.Monto` | Si se cobra la hora entera, se redondean las horas para arriba. | Bajo |
-| C12 | Una reserva pendiente que no recibe la seña en 72 horas pasa sola a `Vencida`. No libera nada, porque sin seña no ocupa la fecha (RN06): sirve para que no se acumulen pendientes. | `appsettings.json`, `Reglas:HorasVencimientoPendiente` | Se cambia el número de horas. Con 0, las pendientes no vencen. | Bajo |
-| C13 | Si se cancela una reserva en la que ya se pagó más que la seña, tampoco se registra la devolución de la diferencia: los pagos quedan como están. | `ReservaService.CancelarAsync` | Hay que registrar devoluciones, que hoy no existen en el modelo. | Alto |
+| C12 | Una reserva pendiente que no recibe la seña en 72 horas pasa sola a `Vencida`. El complejo no reserva sin seña (RN06): la pendiente es solo el paso entre cargar la reserva y cargar su seña, que lo normal es hacer juntos. Si alguna queda sin seña, vence, para que no se acumulen. | `appsettings.json`, `Reglas:HorasVencimientoPendiente` | Se cambia el número de horas. Con 0, las pendientes no vencen. | Bajo |
+| C13 | Si se cancela una reserva que ya tenía pagado también el saldo, no se registra ninguna devolución: los pagos quedan como están. La seña se pierde, eso está confirmado (RN09). | `ReservaService.CancelarAsync` | Hay que registrar devoluciones, que hoy no existen en el modelo. | Alto |
+| C14 | Una actividad del gremio se anota a nombre de la persona del gremio que la organiza, cargada como cliente. | `ReservaService.CrearAsync` | Si va a nombre del gremio y no de una persona, hace falta un cliente sin DNI o una tabla aparte. | Medio |
+| C15 | La seña mínima es la misma para todos los espacios: $50.000. | `appsettings.json`, `Reglas:SeniaMinima` | Si cambia según el espacio, pasa a ser una columna de ESPACIO. | Alto |
+| C16 | Un turno fijo tiene reservadas las próximas 52 semanas, y el sistema las va renovando solo. Si al renovar una semana la cancha ya está ocupada en ese horario, esa semana se saltea. Al darlo de baja se cancelan las semanas que vienen, salvo las que ya se pagaron. | `TurnoFijoService` (`ExtenderAsync` y `DarDeBajaAsync`); `Reglas:SemanasTurnoFijo` | Las semanas se cambian en `appsettings.json`. Si la baja tiene que cancelar también las pagadas, se quita esa condición en `DarDeBajaAsync`. | Bajo |
+| C17 | Si alguna de las semanas del turno fijo ya está ocupada cuando se pacta, el turno no se crea: la respuesta dice con qué reservas choca, para buscar otro horario. | `TurnoFijoService.CrearAsync` | Si se da igual y esas semanas no juegan, se crean las semanas libres y la respuesta avisa cuáles faltan. | Medio |
 
 ## Reglas candidatas que el sistema no aplica
 
@@ -104,31 +108,24 @@ marcada `[PRUEBA]`:
 
 - Los nombres, las capacidades y las descripciones de los espacios.
 - Trece de las catorce tarifas. La única real es la del salón para afiliados, $350.000. Las de las
-  canchas son por hora (RN07).
+  canchas son por hora (RN07). La seña mínima, $50.000, también es real: sale de la entrevista.
 - Los medios de pago: Efectivo y Transferencia.
 - Los dos clientes y la reserva de ejemplo.
 
 ## Para preguntar cuando se pueda
 
-Las preguntas del 23/11/2026 ya tienen respuesta (están en [Confirmados](#confirmados)). Estas salen
-de esas respuestas. Van primero las más caras de cambiar después:
+Las preguntas del 23/11/2026 y del 25/11/2026 ya tienen respuesta (están en
+[Confirmados](#confirmados)). Estas salen de las últimas respuestas. Van primero las más caras de
+cambiar después:
 
-1. ¿Cómo funciona un turno fijo de cancha? ¿Es el mismo día y el mismo horario todas las semanas? ¿Hasta
-   cuándo dura: un mes, todo el año, hasta que avisen? (RN22)
-2. En un turno fijo, ¿se paga cada vez que juegan o por mes? Si una semana no vienen, ¿se cobra igual?
-   (RN22)
-3. Si alguien ya pagó más que la seña y cancela, ¿se le devuelve la diferencia? (C13)
-4. De las reservas que hay que pasar al sistema, ¿son solo las que vienen o también las que ya pasaron?
-   (C5)
-5. Cuando alguien pide una fecha y todavía no dejó la seña, ¿lo anotan igual, para acordarse, o no anotan
-   nada hasta que paga? Si lo anotan, ¿cuántos días esperan la seña? (RN06, C12)
-6. Si una reserva junta una cancha con otro espacio, por ejemplo la cantina y la cancha de básquet para un
-   cumpleaños, ¿la seña se calcula sobre todo o solo sobre lo que no es cancha? (C9)
-7. Cuando el gremio hace una actividad en el complejo, ¿se cobra? ¿A nombre de quién se anota?
-8. En la entrevista dijeron que, si el evento es un viernes, pueden entrar a la mañana a decorar. Si el
-   evento es otro día, por ejemplo un sábado, ¿también pueden entrar antes a decorar? (C1)
-9. Si alguien usa la cancha una hora y media, ¿se cobra una hora y media o dos horas? (C11)
-10. ¿Sigue en pie la atención por WhatsApp? También estaba pensada para los clientes. (A2)
+1. ¿La seña mínima de $50.000 es la misma para todos los espacios (salón, quinchos y cantina), o
+   cambia según el espacio? (C15)
+2. Si alguien ya pagó todo, la seña y el saldo, y cancela, ¿se le devuelve el saldo? (C13)
+3. Las actividades del gremio, ¿a nombre de quién se anotan: de la persona que la organiza o del
+   gremio? (C14)
+4. Si alguien quiere un turno fijo y en una de las semanas que vienen la cancha ya está reservada, por
+   ejemplo para un evento, ¿se le da el turno igual y esa semana no juega, o se busca otro horario? (C17)
+5. ¿Sigue en pie la atención por WhatsApp? También estaba pensada para los clientes. (A2)
 
 ## Confirmados
 
@@ -147,6 +144,15 @@ Al confirmar un supuesto, se mueve acá.
 | RN21 (era C4) | 23/11/2026 | Emiliano Lopez, desde el complejo | Con la seña se congela la fecha, no el precio: el precio se congela cuando se paga todo («si no cancelaste», en el sentido de pagar el total). Al cambiar una tarifa se recalculan las reservas futuras que no están pagadas del todo, y al modificar una reserva, también (casos TAR-05, TAR-06 y RES-23). |
 | RN22 (era S5) | 23/11/2026 | Emiliano Lopez, desde el complejo | Suele haber turnos fijos en las canchas. Todavía no se programó: falta saber cómo funcionan (preguntas 1 y 2). |
 | C5, en parte | 23/11/2026 | Emiliano Lopez, desde el complejo | Hay que pasar al sistema las reservas que ya tiene el complejo. C5 sigue en la tabla de supuestos hasta saber si también las que ya pasaron (pregunta 4). |
+| C1 | 25/11/2026 | Emiliano Lopez, desde el complejo | Los eventos se hacen cualquier día, normalmente viernes, sábados y domingos, y pueden entrar a decorar antes del evento: RN17 vale cualquier día. Nada que cambiar: ya se aceptaba. |
+| C5 | 25/11/2026 | Emiliano Lopez, desde el complejo | Solo hay que pasar al sistema las reservas que vienen, así que no hace falta cargar fechas pasadas. Nada que cambiar: se cargan como cualquier reserva, y su seña como un pago con su número de ticket. |
+| C9 | 25/11/2026 | Emiliano Lopez, desde el complejo | Si una reserva junta dos espacios, uno de ellos una cancha, la seña es una sola, sobre toda la reserva. Nada que cambiar (caso RES-14). |
+| RN06 | 25/11/2026 | Emiliano Lopez, desde el complejo | No anotan nada sin seña. Nada que cambiar: en el sistema la reserva y su seña se cargan una después de la otra, y si alguna queda sin seña vence sola (C12). |
+| RN09 | 25/11/2026 | Emiliano Lopez, desde el complejo | Quien cancela pierde la seña, sea cual sea el monto que dejó. Nada que cambiar (caso CAN-07). Lo que pasa con el saldo ya pagado quedó en C13. |
+| RN15 | 25/11/2026 | Emiliano Lopez, desde el complejo | La seña la decide quien reserva: el complejo pide un mínimo y cada cliente elige cuánto deja. La seña requerida pasa a ser el mínimo, $50.000; antes era el 50 % del total (casos RES-01, RES-14 y PAG-09 a PAG-11). |
+| RN22 | 25/11/2026 | Emiliano Lopez, desde el complejo | Un turno fijo se pacta con una semana de anticipación, ocupa la cancha todas las semanas en el horario pactado y dura hasta que dejan de venir. Se paga cada vez que juegan y, si una semana no van, avisan y no pagan. Se programó: tabla `turno_fijo` (DER v6), `/api/turnos-fijos` y los casos TUR-01 a TUR-16. |
+| RN23 (era C11) | 25/11/2026 | Emiliano Lopez, desde el complejo | No se reserva una hora y media de cancha: siempre horas enteras. El sistema rechaza las reservas de cancha que no duran horas enteras (casos RES-26, RES-27 y TUR-06). |
+| RN24 | 25/11/2026 | Emiliano Lopez, desde el complejo | Las actividades del gremio no se cobran: se prestan de cortesía. Se suma `reserva.sin_cargo` (DER v6): monto 0, sin seña y confirmada (casos RES-28 y RES-29). |
 
 ## Descartados
 
@@ -162,3 +168,4 @@ Quedaron sin efecto por lo que confirmó el complejo. Los códigos no se reutili
 | S5 | No hay turnos fijos semanales: las canchas se reservan igual que los demás espacios. | Suele haber turnos fijos: pasaron a ser la regla RN22. | 23/11/2026 |
 | C2 | La seña nunca supera el total: en una cancha de $20.000 la seña es $20.000. | Las canchas no llevan seña (RN20). El tope del total sigue en `CalcularSenia` por si algún otro espacio costara menos que la seña mínima. | 23/11/2026 |
 | C4 | El precio queda fijo cuando se registra la reserva. | El precio sigue la tarifa hasta que se paga todo (RN21). | 23/11/2026 |
+| C11 | Una fracción de hora de cancha se cobra en proporción: una hora y media cuesta 1,5 veces la tarifa. | No se reserva una hora y media: las canchas van siempre por horas enteras (RN23). | 25/11/2026 |

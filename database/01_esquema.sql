@@ -1,11 +1,13 @@
 -- =====================================================================
 --  Sistema de reservas del Complejo ATEP · Grupo N.º 5
---  01_esquema.sql — crea la base de datos y las 9 tablas del DER v5
+--  01_esquema.sql — crea la base de datos y las 10 tablas del DER v6
 --
---  Fuente: "DER Complejo ATEP", versión 5 (23/11/2026) del grupo.
---  La v5 saca EMPLEADO y el acceso al sistema (USUARIO, PERFIL y PERMISO):
+--  Fuente: "DER Complejo ATEP", versión 6 (25/11/2026) del grupo.
+--  La v5 sacó EMPLEADO y el acceso al sistema (USUARIO, PERFIL y PERMISO):
 --  el 20/11/2026 el complejo confirmó que no hay sitio web y que el sistema
 --  lo usa una sola persona de la administración, en una computadora.
+--  La v6 suma TURNO_FIJO (RN22) y, en RESERVA, la semana del turno fijo y
+--  las reservas sin cargo del gremio (RN24): las respuestas del 25/11/2026.
 --  Las marcas SUPUESTO S4 y S6 son los supuestos del DER que falta
 --  confirmar con el complejo. Están explicados en docs/supuestos.md,
 --  junto con S2, S3 y S5, que el complejo respondió el 23/11/2026.
@@ -104,11 +106,34 @@ CREATE TABLE tipo_pago (
 );
 
 -- ---------------------------------------------------------------------
+--  RN22: TURNO_FIJO. Un cliente que juega en la misma cancha, el mismo día
+--  y en el mismo horario todas las semanas, hasta que deja de venir.
+--  Cada semana es una RESERVA que apunta a su turno: se paga cuando juegan
+--  y, si una semana no van, se cancela esa reserva.
+-- ---------------------------------------------------------------------
+CREATE TABLE turno_fijo (
+  id_turno_fijo   INT       NOT NULL AUTO_INCREMENT,
+  id_cliente      INT       NOT NULL,
+  id_espacio      INT       NOT NULL,   -- una cancha (lo controla la API: RN22)
+  primer_inicio   DATETIME  NOT NULL,   -- el primer turno; se repite cada 7 días
+  primer_fin      DATETIME  NOT NULL,
+  fecha_baja      DATE      NULL,       -- cuando dejan de venir; NULL = sigue activo
+  fecha_registro  DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pk_turno_fijo          PRIMARY KEY (id_turno_fijo),
+  CONSTRAINT fk_turno_fijo_cliente  FOREIGN KEY (id_cliente) REFERENCES cliente (id_cliente),
+  CONSTRAINT fk_turno_fijo_espacio  FOREIGN KEY (id_espacio) REFERENCES espacio (id_espacio),
+  CONSTRAINT ck_turno_fijo_horario  CHECK (primer_fin > primer_inicio),
+  -- RN23: las canchas se reservan por horas enteras.
+  CONSTRAINT ck_turno_fijo_horas    CHECK (MOD(TIMESTAMPDIFF(MINUTE, primer_inicio, primer_fin), 60) = 0)
+);
+
+-- ---------------------------------------------------------------------
 --  El centro del modelo: RESERVA, sus espacios y sus pagos
 -- ---------------------------------------------------------------------
 CREATE TABLE reserva (
   id_reserva          INT            NOT NULL AUTO_INCREMENT,
   id_cliente          INT            NOT NULL,
+  id_turno_fijo       INT            NULL,       -- RN22: la semana de un turno fijo; NULL en las demás
   fecha_hora_inicio   DATETIME       NOT NULL,   -- S2: horario con inicio y fin. Fecha y hora juntas,
   fecha_hora_fin      DATETIME       NOT NULL,   -- porque un evento puede terminar a las 4 del día siguiente
   ingreso_decoracion  DATETIME       NULL,       -- RN17: ocupa el espacio desde esta hora
@@ -116,14 +141,20 @@ CREATE TABLE reserva (
   cantidad_invitados  INT            NULL,       -- RN16: se informa al dejar la seña
   detalle_armado      VARCHAR(500)   NULL,       -- RN16: cómo quiere las mesas
   monto_total         DECIMAL(12,2)  NOT NULL,   -- RN07; sigue la tarifa hasta pagarse del todo (RN21)
+  sin_cargo           BOOLEAN        NOT NULL DEFAULT FALSE,   -- RN24: actividad del gremio u otra cortesía
   estado              VARCHAR(20)    NOT NULL DEFAULT 'Pendiente',
   fecha_registro      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pk_reserva             PRIMARY KEY (id_reserva),
   CONSTRAINT fk_reserva_cliente     FOREIGN KEY (id_cliente) REFERENCES cliente (id_cliente),
+  CONSTRAINT fk_reserva_turno_fijo  FOREIGN KEY (id_turno_fijo) REFERENCES turno_fijo (id_turno_fijo),
+  -- Un turno fijo tiene una sola reserva por semana.
+  CONSTRAINT uq_reserva_turno_semana UNIQUE (id_turno_fijo, fecha_hora_inicio),
   CONSTRAINT ck_reserva_horario     CHECK (fecha_hora_fin > fecha_hora_inicio),
   CONSTRAINT ck_reserva_decoracion  CHECK (ingreso_decoracion IS NULL OR ingreso_decoracion <= fecha_hora_inicio),
   CONSTRAINT ck_reserva_invitados   CHECK (cantidad_invitados IS NULL OR cantidad_invitados > 0),
   CONSTRAINT ck_reserva_monto       CHECK (monto_total >= 0),
+  -- RN24: una reserva sin cargo no se cobra.
+  CONSTRAINT ck_reserva_sin_cargo   CHECK (sin_cargo = FALSE OR monto_total = 0),
   -- RN05 (Pendiente → Confirmada), RN10 (Cancelada) y C12 (Vencida).
   -- Solo una reserva confirmada ocupa el espacio (RN06).
   CONSTRAINT ck_reserva_estado      CHECK (estado IN ('Pendiente', 'Confirmada', 'Cancelada', 'Vencida'))

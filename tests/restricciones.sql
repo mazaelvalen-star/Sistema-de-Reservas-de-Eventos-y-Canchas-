@@ -1,9 +1,9 @@
 -- =====================================================================
 --  restricciones.sql — pruebas de las restricciones de la base (MAN-02)
 --
---  Intenta guardar o borrar 16 cosas que la base NO debe permitir y
+--  Intenta guardar o borrar 20 cosas que la base NO debe permitir y
 --  muestra una tabla con el resultado de cada intento. La prueba sale
---  bien si los 16 casos dicen "OK: rechazado".
+--  bien si los 20 casos dicen "OK: rechazado".
 --
 --  Cómo correrlo, con la base recién creada:
 --    Workbench:  File > Open SQL Script, y el rayo.
@@ -107,6 +107,30 @@ BEGIN
 
   DELETE FROM tipo_pago WHERE id_tipo_pago = 2;
   CALL anotar_caso('R20', 'Borrar un medio de pago que ya se usó (fk_dp_tipo_pago)');
+
+  -- Un turno fijo válido con su primera semana, para los casos de turnos fijos (DER v6).
+  INSERT INTO turno_fijo (id_cliente, id_espacio, primer_inicio, primer_fin)
+  VALUES (2, 5, '2027-05-04 21:00:00', '2027-05-04 22:00:00');
+  SET @turno = LAST_INSERT_ID();
+  INSERT INTO reserva (id_cliente, id_turno_fijo, fecha_hora_inicio, fecha_hora_fin, monto_total, estado)
+  VALUES (2, @turno, '2027-05-04 21:00:00', '2027-05-04 22:00:00', 50000, 'Confirmada');
+  SET @error = NULL;
+
+  INSERT INTO turno_fijo (id_cliente, id_espacio, primer_inicio, primer_fin)
+  VALUES (2, 5, '2027-05-04 22:00:00', '2027-05-04 21:00:00');
+  CALL anotar_caso('R21', 'Turno fijo que termina antes de empezar (ck_turno_fijo_horario)');
+
+  INSERT INTO turno_fijo (id_cliente, id_espacio, primer_inicio, primer_fin)
+  VALUES (2, 5, '2027-05-04 21:00:00', '2027-05-04 22:30:00');
+  CALL anotar_caso('R22', 'Turno fijo de una hora y media, RN23 (ck_turno_fijo_horas)');
+
+  INSERT INTO reserva (id_cliente, id_turno_fijo, fecha_hora_inicio, fecha_hora_fin, monto_total, estado)
+  VALUES (2, @turno, '2027-05-04 21:00:00', '2027-05-04 22:00:00', 50000, 'Confirmada');
+  CALL anotar_caso('R23', 'Dos reservas del mismo turno fijo en la misma semana (uq_reserva_turno_semana)');
+
+  INSERT INTO reserva (id_cliente, fecha_hora_inicio, fecha_hora_fin, monto_total, sin_cargo)
+  VALUES (1, '2027-05-05 18:00:00', '2027-05-05 22:00:00', 1000, TRUE);
+  CALL anotar_caso('R24', 'Reserva sin cargo con monto, RN24 (ck_reserva_sin_cargo)');
 
   ROLLBACK;
 END //

@@ -1,11 +1,11 @@
 # Base de datos
 
 Scripts de MySQL 8 (8.0.16 o superior) del Sistema de Reservas del Complejo ATEP. Implementan el
-**DER v5 del grupo** (23/11/2026): 9 tablas.
+**DER v6 del grupo** (25/11/2026): 10 tablas.
 
 | Archivo | Qué hace |
 | --- | --- |
-| `01_esquema.sql` | Borra y vuelve a crear la base `atep_reservas` con sus 9 tablas, claves y restricciones. |
+| `01_esquema.sql` | Borra y vuelve a crear la base `atep_reservas` con sus 10 tablas, claves y restricciones. |
 | `02_datos_iniciales.sql` | Carga espacios, tarifas, medios de pago, dos clientes con domicilio y una reserva de ejemplo con su seña. |
 
 ## Cómo correrlos
@@ -42,9 +42,12 @@ supuestos del DER:
 | `ck_reserva_estado` | Un estado que no sea Pendiente, Confirmada, Cancelada o Vencida. |
 | `uq_reserva_espacio` | El mismo espacio dos veces en una reserva. |
 | `ck_dp_monto` | Un detalle de pago en cero o negativo. |
+| `ck_turno_fijo_horario`, `ck_turno_fijo_horas` (RN23) | Un turno fijo que termina antes de empezar o que no dura horas enteras. |
+| `uq_reserva_turno_semana` (RN22) | Dos reservas del mismo turno fijo en la misma semana. |
+| `ck_reserva_sin_cargo` (RN24) | Una reserva sin cargo con un monto. |
 | FK sin `CASCADE` | Borrar un cliente con reservas (RN11), una reserva con pagos o un medio de pago ya usado. |
 
-Para comprobarlas hay un script, `tests/restricciones.sql`, que intenta guardar 16 datos inválidos y
+Para comprobarlas hay un script, `tests/restricciones.sql`, que intenta guardar 20 datos inválidos y
 muestra cuáles rechazó la base. Cómo correrlo está en [`tests/README.md`](../tests/README.md).
 
 La superposición de horarios (RN01) **no** se controla con una restricción: la controla la API dentro de

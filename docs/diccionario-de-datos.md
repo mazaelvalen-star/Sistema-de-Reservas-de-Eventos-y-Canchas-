@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Describe las 9 tablas de la base `atep_reservas`, que implementa el DER v5. La estructura sale de
+Describe las 10 tablas de la base `atep_reservas`, que implementa el DER v6. La estructura sale de
 `database/01_esquema.sql`; si se cambia una tabla ahí, hay que actualizar también esta página.
 
 Cómo leer las tablas:
@@ -93,15 +93,17 @@ El centro del modelo: une al cliente con los espacios, el horario y los pagos.
 | Columna | Tipo | Obligatorio | Clave | Qué guarda |
 | --- | --- | --- | --- | --- |
 | `id_reserva` | INT | Sí | PK | Identificador de la reserva. |
-| `id_cliente` | INT | Sí | FK → cliente | Titular de la reserva. |
-| `fecha_hora_inicio` | DATETIME | Sí | — | Cuándo empieza el evento. |
+| `id_cliente` | INT | Sí | FK → cliente | Titular de la reserva. En una actividad del gremio, quien la organiza (C14). |
+| `id_turno_fijo` | INT | No | FK → turno_fijo, UQ compuesta | Si es la semana de un turno fijo, cuál (RN22). Vacío en las demás reservas. |
+| `fecha_hora_inicio` | DATETIME | Sí | UQ compuesta | Cuándo empieza el evento. |
 | `fecha_hora_fin` | DATETIME | Sí | — | Cuándo termina. Puede ser del día siguiente: los eventos terminan a las 4:00. |
 | `ingreso_decoracion` | DATETIME | No | — | Desde cuándo pueden entrar a decorar. El espacio queda ocupado desde esa hora (RN17). |
 | `tipo_evento` | VARCHAR(60) | No | — | Cumpleaños, casamiento, partido... |
 | `cantidad_invitados` | INT | No | — | Invitados que informa el cliente (RN16). No puede superar la capacidad (RN03). |
 | `detalle_armado` | VARCHAR(500) | No | — | Cómo quiere las mesas y las sillas (RN16). |
 | `monto_total` | DECIMAL(12,2) | Sí | — | Suma de las tarifas de sus espacios: las canchas por hora y los demás por evento (RN07). Sigue la tarifa vigente hasta que la reserva se paga del todo (RN21). |
-| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05 y RN10). Solo una confirmada ocupa el espacio: una pendiente espera la seña (RN06), y una reserva solo de canchas nace confirmada (RN20). Por defecto, Pendiente. |
+| `sin_cargo` | BOOLEAN | Sí | — | TRUE = actividad del gremio u otra cortesía: no se cobra, no lleva seña y queda confirmada (RN24). Por defecto, FALSE. |
+| `estado` | VARCHAR(20) | Sí | — | Pendiente, Confirmada, Cancelada o Vencida (RN05 y RN10). Solo una confirmada ocupa el espacio: una pendiente espera la seña (RN06), y una reserva solo de canchas, o sin cargo, nace confirmada (RN20, RN24). Por defecto, Pendiente. |
 | `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Desde acá se cuentan las horas para dejar la seña antes de que la reserva venza (C12). Por defecto, el momento en que se guarda. |
 
 Además:
@@ -111,6 +113,29 @@ Además:
 - `ck_reserva_horario`: el fin es posterior al inicio.
 - `ck_reserva_invitados`: si se informan invitados, son más de cero.
 - `ck_reserva_monto`: el monto no es negativo.
+- `ck_reserva_sin_cargo`: una reserva sin cargo tiene monto 0 (RN24).
+- `uq_reserva_turno_semana`: un turno fijo tiene una sola reserva por semana (id_turno_fijo y fecha_hora_inicio no se repiten).
+
+## turno_fijo
+
+RN22: un cliente que juega en la misma cancha, el mismo día y en el mismo horario todas las semanas,
+hasta que deja de venir. Cada semana es una fila de `reserva` que apunta al turno: se paga cuando juegan
+y, si una semana no van, se cancela esa reserva.
+
+| Columna | Tipo | Obligatorio | Clave | Qué guarda |
+| --- | --- | --- | --- | --- |
+| `id_turno_fijo` | INT | Sí | PK | Identificador del turno. |
+| `id_cliente` | INT | Sí | FK → cliente | Quién juega. Paga la tarifa de su condición (RN07, RN08). |
+| `id_espacio` | INT | Sí | FK → espacio | La cancha. La API controla que sea una cancha. |
+| `primer_inicio` | DATETIME | Sí | — | Cuándo empieza el primer turno. Se repite cada 7 días: el día de la semana y la hora salen de acá. |
+| `primer_fin` | DATETIME | Sí | — | Cuándo termina el primer turno. Siempre horas enteras (RN23). |
+| `fecha_baja` | DATE | No | — | Cuando dejan de venir. Vacío = el turno sigue. |
+| `fecha_registro` | DATETIME | Sí | — | Cuándo se cargó. Por defecto, el momento en que se guarda. |
+
+Además:
+
+- `ck_turno_fijo_horario`: el fin es posterior al inicio.
+- `ck_turno_fijo_horas`: dura horas enteras (RN23).
 
 ## reserva_espacio
 
