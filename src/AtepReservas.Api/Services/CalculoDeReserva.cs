@@ -9,6 +9,12 @@ namespace AtepReservas.Api.Services;
 /// </summary>
 public static class CalculoDeReserva
 {
+    private static readonly IEstrategiaCalculo estrategiaEvento =
+        new CalculoPorEvento();
+
+    private static readonly IEstrategiaCalculo estrategiaHora =
+        new CalculoPorHora();
+
     /// <summary>
     /// RN20: las canchas no llevan seña. Una reserva lleva seña si incluye algún espacio que no
     /// sea cancha.
@@ -24,8 +30,11 @@ public static class CalculoDeReserva
     /// cambia por día ni por horario (S3). Las horas de cancha son siempre enteras (RN23).
     /// </summary>
     /// <param name="tarifas">Tiene que haber una tarifa para cada espacio.</param>
-    public static decimal Monto(IEnumerable<Espacio> espacios, IReadOnlyCollection<Tarifa> tarifas,
-        DateTime inicio, DateTime fin)
+    public static decimal Monto(
+        IEnumerable<Espacio> espacios,
+        IReadOnlyCollection<Tarifa> tarifas,
+        DateTime inicio,
+        DateTime fin)
     {
         var horas = (decimal)(fin - inicio).TotalHours;
         decimal total = 0;
@@ -52,11 +61,17 @@ public static class CalculoDeReserva
     /// Vale para toda reserva que incluya una cancha, porque el horario es el mismo para todos sus
     /// espacios.
     /// </summary>
-    public static void ValidarHorasEnteras(IEnumerable<Espacio> espacios, DateTime inicio, DateTime fin)
+    public static void ValidarHorasEnteras(
+        IEnumerable<Espacio> espacios,
+        DateTime inicio,
+        DateTime fin)
     {
-        if (espacios.Any(e => e.Tipo == TipoEspacio.Cancha) && (fin - inicio).Ticks % TimeSpan.TicksPerHour != 0)
+        if (espacios.Any(e => e.Tipo == TipoEspacio.Cancha)
+            && (fin - inicio).Ticks % TimeSpan.TicksPerHour != 0)
+        {
             throw new ReglaNegocioException("RN23",
                 "Las canchas se reservan por horas enteras: no se puede reservar, por ejemplo, una hora y media.",
                 StatusCodes.Status422UnprocessableEntity);
+        }
     }
 }
