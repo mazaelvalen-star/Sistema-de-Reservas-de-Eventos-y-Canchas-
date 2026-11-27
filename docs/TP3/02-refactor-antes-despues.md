@@ -115,3 +115,13 @@ La compilación y las pruebas funcionales de esta nueva versión quedan pendient
 ## 7. Conclusión
 
 La refactorización mejora la legibilidad, organización y mantenimiento del código sin introducir nuevas funcionalidades ni modificar intencionalmente el comportamiento externo del sistema.
+
+## 8. Resultado de la compilación
+
+Fecha: 27/11/2026.
+
+Se realizó la compilación del proyecto refactorizado mediante Visual Studio, obteniendo un resultado exitoso.
+
+El código refactorizado no presenta errores de compilación.
+
+Las pruebas funcionales con MySQL y la revisión por otro integrante del equipo quedan pendientes.
