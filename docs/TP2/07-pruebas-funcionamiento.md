@@ -6,29 +6,28 @@ Verificar que la implementación del patrón Strategy mantenga las reglas de neg
 
 ## Casos de prueba
 
-Los siguientes valores son ejemplos propuestos para verificar el funcionamiento.
+| Caso | Resultado esperado |
+|---|---|
+| Reserva de cancha por dos horas | $100.000 |
+| Reserva de quincho por evento | $150.000 |
+| Reserva de cantina y cancha | $360.000 |
+| Modificación de cancha a tres horas | $150.000 |
+| Reserva de cancha por una hora y media | Rechazada por RN23 |
 
-| Caso | Tarifa | Duración | Resultado esperado |
-|---|---|---|---|
-| Reserva de cancha | $10.000 por hora | 2 horas | $20.000 |
-| Reserva de salón | $50.000 por evento | 4 horas | $50.000 |
-| Reserva de quincho | $30.000 por evento | 3 horas | $30.000 |
-| Cancha y salón | $10.000 por hora + $50.000 por evento | 2 horas | $70.000 |
-| Modificación de cancha | $10.000 por hora | De 2 a 3 horas | $30.000 |
+## Resultados de la compilación
 
-## Verificaciones técnicas
+Fecha: 27/11/2026.
+Herramienta: Visual Studio.
 
-- Comprobar la compilación del proyecto.
-- Verificar la implementación de IEstrategiaCalculo.
-- Comprobar la selección correcta de cada estrategia.
-- Verificar el cálculo de reservas con múltiples espacios.
-- Comprobar la integración con ReservaService.
-- Verificar que el importe recalculado no sea inferior al monto ya pagado.
+- Proyectos compilados correctamente: 2.
+- Errores: 0.
+- Advertencias: 1 (NU1902, MySqlConnector).
+- Tiempo de compilación: 8,658 segundos.
 
-## Estado de las pruebas
+Resultado: compilación exitosa.
 
-Se realizó una revisión estática del código fuente.
+## Conclusión
 
-Las pruebas de ejecución y compilación se encuentran pendientes de confirmación.
+Se comprobó que la implementación del patrón Strategy compila correctamente y se realizó una revisión estática de su integración con el código existente.
 
-Los resultados esperados deberán compararse con los resultados obtenidos durante la ejecución del sistema.
+Las pruebas funcionales con la base de datos MySQL quedan pendientes de ejecución y revisión por parte del equipo.
