@@ -17,6 +17,7 @@ builder.Services.AddDbContext<AtepDbContext>(opciones =>
 builder.Services.Configure<ReglasOptions>(builder.Configuration.GetSection("Reglas"));
 
 // 3) Services: acá vive la lógica de negocio. Scoped = uno nuevo por cada request.
+builder.Services.AddScoped<TurnoFijoService>();
 builder.Services.AddScoped<EspacioService>();
 builder.Services.AddScoped<ClienteService>();
 builder.Services.AddScoped<TarifaService>();

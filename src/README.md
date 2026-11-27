@@ -1,16 +1,19 @@
 # Backend · Sistema de reservas del Complejo ATEP
 
-API REST en ASP.NET Core (.NET 10) con Entity Framework Core y MySQL 8. Implementa el **DER v5 del
-grupo** (23/11/2026) y las reglas de negocio del relevamiento.
+API REST en ASP.NET Core (.NET 10) con Entity Framework Core y MySQL 8. Implementa el **DER v6 del
+grupo** (25/11/2026) y las reglas de negocio del relevamiento.
 
-**Estado.** La base está completa (9 tablas) y la API cubre todos los requisitos de esta versión, RF01 a RF19:
+**Estado.** La base está completa (10 tablas) y la API cubre todos los requisitos de esta versión, RF01 a
+RF19 y RF23:
 
 - **Espacios:** CRUD completo, que es el ejemplo a copiar.
 - **Clientes:** CRUD con su domicilio, búsqueda por DNI y por nombre (RN08, RN11).
 - **Tarifas y medios de pago:** lista de precios, una tarifa por espacio y condición, y medios de pago con baja lógica.
 - **Reservas:** alta, calendario, modificación y cancelación (RN01, RN03, RN05, RN06, RN07, RN09, RN10,
-  RN17, RN20, RN21).
-- **Pagos:** seña y saldo, con uno o varios medios por pago (RN05, RN15).
+  RN17, RN20, RN21, RN23), y las actividades del gremio, sin cargo (RN24).
+- **Turnos fijos de las canchas:** alta, consulta y baja. Cada semana es una reserva que se paga cuando
+  juegan (RN22).
+- **Pagos:** la seña, desde un mínimo, y el saldo, con uno o varios medios por pago (RN05, RN15).
 
 **Quién la usa.** Una sola persona de la administración del complejo, en una computadora, así que no
 hay sitio web ni perfiles: lo confirmó el complejo el 20/11/2026. Tampoco hay login (A3 en
@@ -69,8 +72,8 @@ Las fechas van en hora local y sin `Z` al final, por ejemplo `"2027-04-10T20:00:
 | # | Pedido | Qué tenés que ver | Regla |
 | --- | --- | --- | --- |
 | 1-2 | Espacios y quinchos libres | Los 7 espacios, y los dos quinchos libres el 10/04/2027 | — |
-| 3 | Reserva de Juan en el Quincho 1 | 201, `Pendiente`, monto $150.000 y seña requerida $75.000. Todavía no guarda la fecha | RN05, RN06, RN07, RN15 |
-| 4 | Seña de $75.000: $50.000 en efectivo y $25.000 por transferencia | Un pago con dos detalles; la reserva pasa a `Confirmada` y recién ahí ocupa el quincho | RN05, RN06, RN15 |
+| 3 | Reserva de Juan en el Quincho 1 | 201, `Pendiente`, monto $150.000 y seña mínima $50.000. Todavía no guarda la fecha | RN05, RN06, RN07, RN15 |
+| 4 | Juan deja $75.000 de seña: $50.000 en efectivo y $25.000 por transferencia | Un pago con dos detalles; la reserva pasa a `Confirmada` y recién ahí ocupa el quincho | RN05, RN06, RN15 |
 | 5 | Otra reserva que se pisa | 409 con `"regla": "RN01"`, la reserva con la que choca y el Quincho 2 como alternativa | RN01 |
 | 6 | 300 invitados en un quincho | 422 | RN03 |
 | 7 | Pago mayor al saldo | 422 | — |
@@ -86,9 +89,15 @@ Las fechas van en hora local y sin `Z` al final, por ejemplo `"2027-04-10T20:00:
 | 31-34 | Medios de pago | Un medio dado de baja no se acepta en un pago nuevo (422) | — |
 | 35-37 | Canchas | 201 `Confirmada` sin seña y $100.000 por dos horas; la que se pisa da 409; al alargarla a tres horas pasa a $150.000 | RN01, RN07, RN20 |
 | 38 | El salón la mañana del evento de ejemplo | No figura libre: desde las 11 entran a decorar | RN17 |
+| 39 | Cancha por una hora y media | 422: las canchas se reservan por horas enteras | RN23 |
+| 40 | Reunión del gremio en el salón | 201 `Confirmada`, con `"sinCargo": true`, monto 0 y sin seña | RN24 |
+| 41-42 | Turno fijo de pádel, los martes de 21 a 22 | 201 con las semanas reservadas; cada una es una reserva confirmada de $25.000 | RN22 |
+| 43-44 | Un martes no van; el siguiente pagan | La semana cancelada no se cobra; la siguiente queda pagada | RN22 |
+| 45-46 | Dejan de venir | La baja cancela las semanas que vienen, salvo la que ya pagaron | RN22 |
 
-Juan no es afiliado (RN08), por eso paga la tarifa de no afiliado del quincho ($150.000) y la seña es
-el 50 % (RN15). En las canchas paga por hora ($50.000 la de fútbol) y no deja seña (RN20).
+Juan no es afiliado (RN08), por eso paga la tarifa de no afiliado del quincho ($150.000). Para
+confirmarla deja una seña de al menos $50.000; cuánto, lo decide él (RN15). En las canchas paga por hora
+($50.000 la de fútbol), siempre horas enteras, y no deja seña (RN20, RN23).
 
 ## Paso 5 · Correr las pruebas automáticas
 
@@ -98,8 +107,8 @@ Con la base recién creada y la API andando, en otra terminal y desde la raíz d
 dotnet run --project tests/PruebasApi
 ```
 
-Son 98 casos que recorren todo lo anterior y, además, mandan pedidos simultáneos. Tiene que terminar
-con `Resultado: 98 de 98 casos aprobados.` El detalle está en [`tests/README.md`](../tests/README.md).
+Son 118 casos que recorren todo lo anterior y, además, mandan pedidos simultáneos. Tiene que terminar
+con `Resultado: 118 de 118 casos aprobados.` El detalle está en [`tests/README.md`](../tests/README.md).
 
 > **Para qué sirven.** Cada vez que cambies algo, corrélas antes de subir: si un cambio rompe una regla
 > que ya andaba, el caso de esa regla falla y te dice cuál es.
@@ -112,6 +121,7 @@ con `Resultado: 98 de 98 casos aprobados.` El detalle está en [`tests/README.md
 | Clientes | `GET` `POST /api/clientes` · `GET` `PUT` `DELETE /api/clientes/{id}` |
 | Tarifas | `GET /api/tarifas` · `GET /api/espacios/{id}/tarifas` · `PUT` `DELETE /api/espacios/{id}/tarifas/{condicion}` |
 | Reservas | `GET` `POST /api/reservas` · `GET` `PUT` `DELETE /api/reservas/{id}` |
+| Turnos fijos | `GET` `POST /api/turnos-fijos` · `GET` `DELETE /api/turnos-fijos/{id}` · sus semanas: `GET /api/reservas?idTurnoFijo={id}` |
 | Pagos | `GET` `POST /api/reservas/{id}/pagos` |
 | Medios de pago | `GET` `POST /api/tipos-pago` · `GET` `PUT` `DELETE /api/tipos-pago/{id}` |
 
@@ -162,6 +172,8 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
 1. **Validar el pedido.** Que el fin sea posterior al inicio, que la fecha no haya pasado y que no haya
    espacios repetidos. Si algo falla, no se toca la base.
 2. **Buscar al cliente y su condición (RN08).** Si es afiliado se usa la tarifa de afiliado; si no, la otra.
+   Antes de seguir, `TurnoFijoService.ExtenderAsync` crea las semanas que les falten a los turnos fijos,
+   así sus horarios ya figuran ocupados (RN22).
 3. **Abrir una transacción.** Todo lo que sigue se guarda completo o no se guarda.
 4. **Bloquear los espacios** con `SELECT ... FOR UPDATE`. Es el paso más importante. Aunque el sistema lo
    use una sola persona, pueden llegar dos pedidos para el mismo quincho en el mismo segundo: un doble
@@ -170,7 +182,8 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
    el bloqueo, el segundo espera a que termine el primero y recién entonces consulta: ya ve la reserva
    del primero y recibe el 409. Lo prueba el caso SIM-01, que manda ocho reservas iguales al mismo
    tiempo: con el bloqueo se registra una sola, y al quitarlo se registran varias.
-5. **Controlar los espacios, la capacidad (RN03) y la superposición (RN01).** Dos horarios se pisan si
+5. **Controlar los espacios, la capacidad (RN03), las horas enteras de las canchas (RN23) y la
+   superposición (RN01).** Dos horarios se pisan si
    cada uno empieza antes de que termine el otro: `inicio_existente < fin_nuevo` y
    `fin_existente > inicio_nuevo`. Solo cuentan las reservas confirmadas: sin seña no se guarda la fecha
    (RN06). Si la reserva tiene ingreso para decorar, el espacio está ocupado desde ese momento (RN17).
@@ -179,7 +192,8 @@ Abrí `Services/ReservaService.cs` en el método `CrearAsync` y seguilo con esta
 6. **Calcular el monto y el estado.** Cada espacio se cobra con su tarifa para la condición del cliente
    (RN07): las canchas por hora y los demás espacios por evento, con un solo precio que no cambia por día
    ni por horario (S3). El cálculo está en `CalculoDeReserva`. Si hay algún espacio que no es cancha,
-   la reserva lleva seña y nace `Pendiente`; si son solo canchas, nace `Confirmada` (RN20).
+   la reserva lleva seña y nace `Pendiente`; si son solo canchas, nace `Confirmada` (RN20). Una
+   actividad del gremio va con `sinCargo`: monto 0, sin seña y `Confirmada` (RN24).
    El total se guarda en `monto_total`, pero no queda fijo: si cambia la tarifa antes de que la reserva
    esté pagada del todo, `TarifaService` le pide a `ReservaService.ActualizarMontosAsync` que lo vuelva a
    calcular (RN21).
@@ -197,22 +211,23 @@ se queden esperando una a la otra. Si el horario ya está tomado, responde 409 y
 
 ## Cómo sumar un CRUD (el patrón)
 
-Hay tres ejemplos, de menor a mayor:
+Hay cuatro ejemplos, de menor a mayor:
 
 - **`TipoPagoService`:** el más simple, una tabla sola.
 - **`EspacioService`:** agrega filtros y una consulta de disponibilidad.
 - **`ClienteService`:** guarda dos tablas juntas, el cliente y su domicilio.
+- **`TurnoFijoService`:** además de su tabla, crea y cancela las reservas de cada semana.
 
-Para sumar otro, por ejemplo los turnos fijos de las canchas (RN22), cuando el complejo confirme cómo
-funcionan:
+Para sumar otro, por ejemplo una tabla de localidades, si deciden normalizar `domicilio.localidad`
+(está en «Fuera de esta versión» del DER):
 
 1. **Tabla y entidad:** primero la tabla en `01_esquema.sql` y en el DER; después su clase en
-   `Models/` (`TurnoFijo.cs`) y su clave en `AtepDbContext`. La base va primero, como en el paso 1.
-2. **DTOs** (`DTOs/TurnoFijoDtos.cs`): un `record TurnoFijoDto` para lo que sale y una clase
-   `TurnoFijoGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
-3. **Service** (`Services/TurnoFijoService.cs`): copiá el que más se parezca y cambiá las reglas.
-4. **Registro** en `Program.cs`: `builder.Services.AddScoped<TurnoFijoService>();`
-5. **Controller** (`Controllers/TurnosFijosController.cs`): copiá `EspaciosController`.
+   `Models/` (`Localidad.cs`) y su clave en `AtepDbContext`. La base va primero, como en el paso 1.
+2. **DTOs** (`DTOs/LocalidadDtos.cs`): un `record LocalidadDto` para lo que sale y una clase
+   `LocalidadGuardarDto` para lo que entra, con `[Required]`, `[StringLength]`, etc.
+3. **Service** (`Services/LocalidadService.cs`): copiá el que más se parezca y cambiá las reglas.
+4. **Registro** en `Program.cs`: `builder.Services.AddScoped<LocalidadService>();`
+5. **Controller** (`Controllers/LocalidadesController.cs`): copiá `EspaciosController`.
 6. **Pruebas:** los pedidos en el `.http` y los casos en `tests/PruebasApi/Program.cs`, uno por cada regla.
 7. **Documentación:** su fila en `docs/requisitos.md`, sus columnas en `docs/diccionario-de-datos.md` y,
    si programaste algo sin confirmar, en `docs/supuestos.md`.
@@ -224,8 +239,7 @@ todo en el mismo *pull request*.
 
 | Tarea | Qué tiene que cumplir |
 | --- | --- |
-| **Turnos fijos de las canchas** | El complejo confirmó que existen (RN22). Falta que conteste cómo funcionan (las preguntas están en `docs/supuestos.md`) para diseñar la tabla y sus pruebas. |
-| **Pasar las reservas** | El complejo confirmó que hay que cargar las reservas que ya tiene (C5). Falta saber cuáles: solo las que vienen o también las pasadas. |
+| **Pasar las reservas** | Cargar las reservas que vienen, que hoy están anotadas en el complejo (solo esas: C5). Van como cualquier reserva, y su seña como un pago con su número de ticket. |
 | **Datos reales** | Reemplazar lo marcado `[PRUEBA]` en `02_datos_iniciales.sql`: espacios, capacidades y tarifas del complejo. |
 | **Alcance** | Definir si hay pantallas y qué pasa con WhatsApp (A1 y A2 en `docs/supuestos.md`), y actualizar el README principal. Si hay pantallas, son para la administración en una computadora, no un sitio web. |
 
@@ -233,12 +247,16 @@ todo en el mismo *pull request*.
 
 - **.NET 10** (LTS) con **EF Core 9** a través de **Pomelo 9.0.0**, el proveedor de MySQL más usado.
   Pomelo todavía no tiene una versión para EF Core 10, y EF Core 9 funciona en .NET 10.
-- Las tablas y columnas son las del DER v5. Además del DER, la base agrega restricciones (`CHECK`,
+- Las tablas y columnas son las del DER v6. Además del DER, la base agrega restricciones (`CHECK`,
   `UNIQUE`) que no cambian el modelo: solo impiden datos inválidos. Están listadas en `database/README.md`.
 - RN06 no necesita una columna nueva: una reserva pendiente no ocupa la fecha, así que el estado
   alcanza. Para no acumular pendientes que nadie va a pagar, a las 72 horas desde `fecha_registro`
   pasan solas a `Vencida` (C12); las horas se cambian en `appsettings.json`.
 - Las bajas de espacios y de medios de pago son lógicas. Las reservas nunca se borran (RN10).
+- Los turnos fijos no se calculan en cada consulta: cada semana es una reserva de verdad, creada por
+  adelantado (52 semanas, C16). Así la superposición, el calendario, los pagos y los cambios de precio
+  (RN21) funcionan igual que en cualquier reserva, sin código aparte. `ExtenderAsync` va sumando las
+  semanas nuevas a medida que pasa el tiempo.
 - Sin login (A3 en `docs/supuestos.md`): el sistema lo usa una sola persona en una computadora. Si otra
   materia lo pide, revertir el commit «Saca el login: el sistema lo usa una sola persona» devuelve la
   tabla `usuario`, sin perfiles.

@@ -136,3 +136,37 @@ una sola persona de la administración, en una computadora.
 - Pasar al sistema las reservas que ya tiene el complejo: falta saber si también las que ya pasaron (C5).
 - Las preguntas nuevas de `supuestos.md`, la de WhatsApp incluida (A2).
 - Reemplazar los datos de prueba por los reales del complejo.
+
+## Segundas respuestas del complejo · 25/11/2026
+
+**Objetivo.** Aplicar lo que respondió Emiliano Lopez a las preguntas nuevas de `supuestos.md`.
+
+**Hecho** (Matías Amarilla)
+
+- Turnos fijos de las canchas (RN22, RF23): tabla `turno_fijo` y `/api/turnos-fijos`. Cada semana es
+  una reserva de cancha común: se paga cuando juegan y, si una semana no van, se cancela. Al dar de baja
+  el turno se liberan las semanas que vienen.
+- La seña es un mínimo, $50.000, y cada cliente decide cuánto deja (RN15). Antes era el 50 % del total.
+- Las canchas se reservan por horas enteras (RN23): se descarta el cobro proporcional de C11.
+- Las actividades del gremio se cargan sin cargo (RN24): columna `reserva.sin_cargo`, monto 0, sin seña
+  y confirmadas. Ocupan el espacio como cualquier reserva.
+- DER v6: suma TURNO_FIJO y, en RESERVA, `id_turno_fijo` y `sin_cargo`. La base pasa de 9 a 10 tablas.
+- Pruebas: 118 casos automáticos (eran 98) y 20 de restricciones de la base (eran 16).
+- Documentación: supuestos, requisitos, diccionario de datos, los README, el archivo `.http` y el
+  relevamiento.
+
+**Decisiones**
+
+- Se confirman C1, C5 y C9. C11 se descarta: pasó a ser RN23.
+- Las semanas de un turno fijo no se calculan en cada consulta: se crean como reservas, 52 semanas
+  hacia adelante, y el sistema las va renovando solo (C16). Así se reusan la superposición, el
+  calendario, los pagos y los cambios de precio.
+- «Se pacta una semana antes» se entendió como la forma de acordar el turno; el sistema no exige esa
+  anticipación.
+- Aparecieron cuatro supuestos del código, C14 a C17.
+
+**Quedó pendiente**
+
+- Las preguntas nuevas de `supuestos.md`, la de WhatsApp incluida (A2).
+- Cargar las reservas que vienen, que hoy están anotadas en el complejo.
+- Reemplazar los datos de prueba por los reales del complejo.

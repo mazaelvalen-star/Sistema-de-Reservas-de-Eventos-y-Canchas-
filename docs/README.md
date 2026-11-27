@@ -6,7 +6,7 @@ Documentación técnica del Sistema de Reservas de Eventos y Canchas del Complej
 | --- | --- |
 | [requisitos.md](requisitos.md) | Qué hace el sistema: cada requisito con sus reglas de negocio, su lugar en la API y sus pruebas. |
 | [supuestos.md](supuestos.md) | Lo que está programado sin confirmar con el complejo, y dónde se cambia cada cosa. |
-| [diccionario-de-datos.md](diccionario-de-datos.md) | Las 9 tablas de la base, columna por columna. |
+| [diccionario-de-datos.md](diccionario-de-datos.md) | Las 10 tablas de la base, columna por columna. |
 | [bitacora.md](bitacora.md) | Qué se hizo y qué se decidió en cada sprint. |
 
 En el resto del repositorio:
@@ -21,4 +21,4 @@ En el resto del repositorio:
 El relevamiento (la entrevista, el acta y las reglas de negocio con su fuente) es un documento
 interno del equipo, porque nombra a personas del complejo. Se entrega en PDF.
 
-El diagrama entidad-relación está en [der-v5.png](der-v5.png): es la versión 5, del 23/11/2026.
+El diagrama entidad-relación está en [der-v6.png](der-v6.png): es la versión 6, del 25/11/2026.
